@@ -1,0 +1,206 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String?  @unique
+  username  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Primary platform used for registration
+  primaryPlatform Platform?
+
+  // Platform-specific accounts
+  accounts     Account[]
+  channels     Channel[]
+  messages     Message[]
+  messageQueue QueuedMessage[]
+
+  @@map("users")
+}
+
+model Account {
+  id           String    @id @default(uuid())
+  platform     Platform
+  platformId   String // Platform-specific user ID
+  username     String?
+  displayName  String?
+  firstName    String?
+  lastName     String?
+  email        String?
+  profileImage String?
+  accessToken  String? // For platforms requiring OAuth
+  refreshToken String?
+  tokenExpiry  DateTime?
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([platform, platformId])
+  @@map("accounts")
+}
+
+model Channel {
+  id          String      @id @default(uuid())
+  platform    Platform
+  platformId  String // Platform-specific channel/group ID
+  title       String
+  type        ChannelType
+  username    String?
+  description String?
+  memberCount Int?
+  isActive    Boolean     @default(true)
+
+  // Platform-specific metadata stored as JSON
+  metadata Json?
+
+  // Permissions and capabilities
+  canPost     Boolean @default(true)
+  canSchedule Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId   String
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@unique([platform, platformId])
+  @@map("channels")
+}
+
+model Message {
+  id          String        @id @default(uuid())
+  content     String
+  messageType MessageType   @default(TEXT)
+  status      MessageStatus @default(PENDING)
+  platform    Platform
+
+  // Media attachments
+  mediaUrls  String[] @default([])
+  mediaTypes String[] @default([])
+
+  // Scheduling
+  scheduledAt DateTime?
+  sentAt      DateTime?
+
+  // Platform-specific data
+  platformMessageId String? // ID returned by platform after sending
+  metadata          Json? // Platform-specific metadata
+
+  // Error handling
+  error      String?
+  retryCount Int     @default(0)
+  maxRetries Int     @default(3)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channelId String
+  channel   Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+}
+
+model QueuedMessage {
+  id          String      @id @default(uuid())
+  content     String
+  messageType MessageType @default(TEXT)
+  platforms   Platform[] // Multiple platforms for cross-posting
+
+  // Media
+  mediaUrls  String[] @default([])
+  mediaTypes String[] @default([])
+
+  // Scheduling
+  scheduledAt DateTime
+  status      QueueStatus @default(PENDING)
+
+  // Targeting
+  channelIds String[] @default([]) // Specific channels
+  sendToAll  Boolean  @default(false) // Send to all user's channels
+
+  // Platform-specific configurations
+  configurations Json? // Different content/settings per platform
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("queued_messages")
+}
+
+enum Platform {
+  TELEGRAM
+  DISCORD
+  TWITTER
+  VK
+}
+
+enum ChannelType {
+  // Telegram
+  PRIVATE
+  GROUP
+  SUPERGROUP
+  CHANNEL
+
+  // Discord
+  GUILD_TEXT
+  GUILD_VOICE
+  DM
+  GROUP_DM
+  GUILD_NEWS
+  GUILD_FORUM
+
+  // Twitter
+  TIMELINE
+  SPACE
+
+  // VK
+  USER_WALL
+  GROUP_WALL
+  PUBLIC_PAGE
+  EVENT_PAGE
+}
+
+enum MessageType {
+  TEXT
+  PHOTO
+  VIDEO
+  DOCUMENT
+  AUDIO
+  GIF
+  STICKER
+  POLL
+  LOCATION
+}
+
+enum MessageStatus {
+  PENDING
+  SENT
+  FAILED
+  CANCELLED
+  SCHEDULED
+}
+
+enum QueueStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
