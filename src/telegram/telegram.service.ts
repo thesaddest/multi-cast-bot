@@ -42,24 +42,44 @@ export class TelegramService implements OnModuleInit {
 
   private setupBotHandlers() {
     // Command handlers
-    this.bot.onText(/\/start/, this.handleCommand.bind(this, 'start'));
-    this.bot.onText(/\/profile/, this.handleCommand.bind(this, 'profile'));
-    this.bot.onText(/\/channels/, this.handleCommand.bind(this, 'channels'));
-    this.bot.onText(/\/add_channel/, this.handleCommand.bind(this, 'add_channel'));
-    this.bot.onText(/\/messages/, this.handleCommand.bind(this, 'messages'));
-    this.bot.onText(/\/menu/, this.handleCommand.bind(this, 'menu'));
-
+    this.bot.onText(/\/start/, this.handleCommand.bind(this, "start"));
+    this.bot.onText(/\/profile/, this.handleCommand.bind(this, "profile"));
+    this.bot.onText(/\/channels/, this.handleCommand.bind(this, "channels"));
+    this.bot.onText(
+      /\/add_channel/,
+      this.handleCommand.bind(this, "add_channel"),
+    );
+    this.bot.onText(/\/messages/, this.handleCommand.bind(this, "messages"));
+    this.bot.onText(/\/menu/, this.handleCommand.bind(this, "menu"));
 
     // Button text handlers
-    this.bot.onText(/^👤 Profile$/, this.handleCommand.bind(this, 'profile'));
-    this.bot.onText(/^📋 My Channels$/, this.handleCommand.bind(this, 'channels'));
-    this.bot.onText(/^➕ Add Channel$/, this.handleCommand.bind(this, 'add_channel'));
-    this.bot.onText(/^📢 Send Message$/, this.handleCommand.bind(this, 'broadcast'));
-    this.bot.onText(/^📜 Message History$/, this.handleCommand.bind(this, 'messages'));
-    this.bot.onText(/^📊 Statistics$/, this.handleCommand.bind(this, 'statistics'));
+    this.bot.onText(/^👤 Profile$/, this.handleCommand.bind(this, "profile"));
+    this.bot.onText(
+      /^📋 My Channels$/,
+      this.handleCommand.bind(this, "channels"),
+    );
+    this.bot.onText(
+      /^➕ Add Channel$/,
+      this.handleCommand.bind(this, "add_channel"),
+    );
+    this.bot.onText(
+      /^📢 Send Message$/,
+      this.handleCommand.bind(this, "broadcast"),
+    );
+    this.bot.onText(
+      /^📜 Message History$/,
+      this.handleCommand.bind(this, "messages"),
+    );
+    this.bot.onText(
+      /^📊 Statistics$/,
+      this.handleCommand.bind(this, "statistics"),
+    );
 
     // Channel username input handler
-    this.bot.onText(/^@([a-zA-Z0-9_]+)$/, this.handleChannelUsernameInput.bind(this));
+    this.bot.onText(
+      /^@([a-zA-Z0-9_]+)$/,
+      this.handleChannelUsernameInput.bind(this),
+    );
 
     // General message handler for broadcast sessions
     this.bot.on("message", this.handleGeneralMessage.bind(this));
@@ -79,7 +99,10 @@ export class TelegramService implements OnModuleInit {
     this.logger.log("Telegram bot handlers set up");
   }
 
-  private async handleCommand(command: string, msg: TelegramBot.Message): Promise<void> {
+  private async handleCommand(
+    command: string,
+    msg: TelegramBot.Message,
+  ): Promise<void> {
     if (!msg.from) return;
 
     const context: TelegramHandlerContext = {
@@ -90,29 +113,33 @@ export class TelegramService implements OnModuleInit {
 
     try {
       switch (command) {
-        case 'start':
+        case "start":
           await this.commandHandler.handleStart(this.bot, context);
           break;
-        case 'profile':
+        case "profile":
           await this.commandHandler.handleProfile(this.bot, context);
           break;
-        case 'channels':
+        case "channels":
           await this.channelHandler.handleChannelsList(this.bot, context);
           break;
-        case 'add_channel':
+        case "add_channel":
           await this.channelHandler.handleAddChannelCommand(this.bot, context);
           break;
-        case 'broadcast':
+        case "broadcast":
           await this.broadcastHandler.handleBroadcastCommand(this.bot, context);
           break;
-        case 'messages':
+        case "messages":
           await this.commandHandler.handleMessageHistory(this.bot, context);
           break;
-        case 'menu':
+        case "menu":
           await this.commandHandler.showMainMenu(this.bot, context.chatId);
           break;
-        case 'statistics':
-          await this.telegramApiService.sendMessage(this.bot, context.chatId, "📊 Statistics feature coming soon!");
+        case "statistics":
+          await this.telegramApiService.sendMessage(
+            this.bot,
+            context.chatId,
+            "📊 Statistics feature coming soon!",
+          );
           break;
         default:
           this.logger.warn(`Unknown command: ${command}`);
@@ -122,12 +149,15 @@ export class TelegramService implements OnModuleInit {
       await this.telegramApiService.sendMessage(
         this.bot,
         msg.chat.id,
-        "❌ An error occurred. Please try again."
+        "❌ An error occurred. Please try again.",
       );
     }
   }
 
-  private async handleChannelUsernameInput(msg: TelegramBot.Message, match: RegExpExecArray): Promise<void> {
+  private async handleChannelUsernameInput(
+    msg: TelegramBot.Message,
+    match: RegExpExecArray,
+  ): Promise<void> {
     if (!msg.from || !match) return;
 
     const context: TelegramHandlerContext = {
@@ -137,18 +167,24 @@ export class TelegramService implements OnModuleInit {
     };
 
     try {
-      await this.channelHandler.handleChannelUsernameInput(this.bot, context, match[1]);
+      await this.channelHandler.handleChannelUsernameInput(
+        this.bot,
+        context,
+        match[1],
+      );
     } catch (error) {
       this.logger.error("Error handling channel username input:", error);
       await this.telegramApiService.sendMessage(
         this.bot,
         msg.chat.id,
-        "❌ An error occurred while processing the channel username."
+        "❌ An error occurred while processing the channel username.",
       );
     }
   }
 
-  private async handleChatMemberUpdate(update: TelegramBot.ChatMemberUpdated): Promise<void> {
+  private async handleChatMemberUpdate(
+    update: TelegramBot.ChatMemberUpdated,
+  ): Promise<void> {
     try {
       const chat = update.chat;
       const newMember = update.new_chat_member;
@@ -160,7 +196,11 @@ export class TelegramService implements OnModuleInit {
         newMember.status === "administrator" &&
         oldMember.status !== "administrator"
       ) {
-        await this.channelHandler.handleBotAddedToChannel(this.bot, chat, update.from);
+        await this.channelHandler.handleBotAddedToChannel(
+          this.bot,
+          chat,
+          update.from,
+        );
       }
     } catch (error) {
       this.logger.error("Error handling chat member update:", error);
@@ -172,21 +212,32 @@ export class TelegramService implements OnModuleInit {
       if (!msg.new_chat_members || !msg.from) return;
 
       const botInfo = await this.bot.getMe();
-      const botAdded = msg.new_chat_members.some(member => member.id === botInfo.id);
+      const botAdded = msg.new_chat_members.some(
+        (member) => member.id === botInfo.id,
+      );
 
       if (botAdded) {
-        await this.channelHandler.handleBotAddedToChannel(this.bot, msg.chat, msg.from);
+        await this.channelHandler.handleBotAddedToChannel(
+          this.bot,
+          msg.chat,
+          msg.from,
+        );
       }
     } catch (error) {
       this.logger.error("Error handling new chat members:", error);
     }
   }
 
-  private async handleCallbackQuery(callbackQuery: TelegramBot.CallbackQuery): Promise<void> {
+  private async handleCallbackQuery(
+    callbackQuery: TelegramBot.CallbackQuery,
+  ): Promise<void> {
     try {
       // Check for broadcast confirmations first
-      if (callbackQuery.data?.startsWith('broadcast_')) {
-        await this.broadcastHandler.handleBroadcastConfirmation(this.bot, callbackQuery);
+      if (callbackQuery.data?.startsWith("broadcast_")) {
+        await this.broadcastHandler.handleBroadcastConfirmation(
+          this.bot,
+          callbackQuery,
+        );
         return;
       }
 
@@ -197,7 +248,7 @@ export class TelegramService implements OnModuleInit {
         await this.telegramApiService.sendMessage(
           this.bot,
           callbackQuery.message.chat.id,
-          "❌ An error occurred. Please try again."
+          "❌ An error occurred. Please try again.",
         );
       }
     }
@@ -205,14 +256,16 @@ export class TelegramService implements OnModuleInit {
 
   private async handleGeneralMessage(msg: TelegramBot.Message): Promise<void> {
     // Skip if it's a command or button text (already handled by other handlers)
-    if (msg.text?.startsWith('/') || 
-        msg.text === '👤 Profile' || 
-        msg.text === '📋 My Channels' || 
-        msg.text === '➕ Add Channel' || 
-        msg.text === '📢 Send Message' ||
-        msg.text === '📜 Message History' ||
-        msg.text === '📊 Statistics' ||
-        msg.text?.startsWith('@')) {
+    if (
+      msg.text?.startsWith("/") ||
+      msg.text === "👤 Profile" ||
+      msg.text === "📋 My Channels" ||
+      msg.text === "➕ Add Channel" ||
+      msg.text === "📢 Send Message" ||
+      msg.text === "📜 Message History" ||
+      msg.text === "📊 Statistics" ||
+      msg.text?.startsWith("@")
+    ) {
       return;
     }
 
@@ -221,4 +274,4 @@ export class TelegramService implements OnModuleInit {
       await this.broadcastHandler.handleBroadcastMessage(this.bot, msg);
     }
   }
-} 
+}

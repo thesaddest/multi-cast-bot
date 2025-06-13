@@ -49,11 +49,16 @@ export class MessageService {
       },
     });
 
-    this.logger.log(`Message created: ${message.id} for channel ${message.channel.title}`);
+    this.logger.log(
+      `Message created: ${message.id} for channel ${message.channel.title}`,
+    );
     return message;
   }
 
-  async updateMessage(messageId: string, data: UpdateMessageData): Promise<Message> {
+  async updateMessage(
+    messageId: string,
+    data: UpdateMessageData,
+  ): Promise<Message> {
     const message = await this.dbService.message.update({
       where: { id: messageId },
       data: {
@@ -70,11 +75,16 @@ export class MessageService {
       },
     });
 
-    this.logger.log(`Message updated: ${message.id} - Status: ${message.status}`);
+    this.logger.log(
+      `Message updated: ${message.id} - Status: ${message.status}`,
+    );
     return message;
   }
 
-  async markMessageAsSent(messageId: string, platformMessageId: string): Promise<Message> {
+  async markMessageAsSent(
+    messageId: string,
+    platformMessageId: string,
+  ): Promise<Message> {
     return this.updateMessage(messageId, {
       status: MessageStatus.SENT,
       sentAt: new Date(),
@@ -82,7 +92,11 @@ export class MessageService {
     });
   }
 
-  async markMessageAsFailed(messageId: string, error: string, retryCount?: number): Promise<Message> {
+  async markMessageAsFailed(
+    messageId: string,
+    error: string,
+    retryCount?: number,
+  ): Promise<Message> {
     return this.updateMessage(messageId, {
       status: MessageStatus.FAILED,
       error,
@@ -90,10 +104,13 @@ export class MessageService {
     });
   }
 
-  async getMessagesByChannel(channelId: string, limit: number = 50): Promise<Message[]> {
+  async getMessagesByChannel(
+    channelId: string,
+    limit: number = 50,
+  ): Promise<Message[]> {
     return this.dbService.message.findMany({
       where: { channelId },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       take: limit,
       include: {
         channel: true,
@@ -102,10 +119,13 @@ export class MessageService {
     });
   }
 
-  async getMessagesByUser(userId: string, limit: number = 50): Promise<Message[]> {
+  async getMessagesByUser(
+    userId: string,
+    limit: number = 50,
+  ): Promise<Message[]> {
     return this.dbService.message.findMany({
       where: { userId },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       take: limit,
       include: {
         channel: true,
@@ -114,10 +134,13 @@ export class MessageService {
     });
   }
 
-  async getMessagesWithStatus(status: MessageStatus, limit: number = 100): Promise<Message[]> {
+  async getMessagesWithStatus(
+    status: MessageStatus,
+    limit: number = 100,
+  ): Promise<Message[]> {
     return this.dbService.message.findMany({
       where: { status },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       take: limit,
       include: {
         channel: true,
@@ -136,7 +159,9 @@ export class MessageService {
       await this.dbService.message.delete({
         where: { id: messageId },
       });
-      this.logger.log(`Message deleted: ${messageId} from ${message.channel.title}`);
+      this.logger.log(
+        `Message deleted: ${messageId} from ${message.channel.title}`,
+      );
     }
   }
-} 
+}

@@ -4,11 +4,7 @@ import { DbModule } from "./db/db.module";
 import { TelegramModule } from "./telegram/telegram.module";
 
 @Module({
-  imports: [
-    ConfigModule,
-    DbModule,
-    TelegramModule,
-  ],
+  imports: [ConfigModule, DbModule, TelegramModule],
   controllers: [],
   providers: [Logger],
 })

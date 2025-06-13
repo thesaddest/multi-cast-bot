@@ -10,7 +10,9 @@ export class UserManagementService {
 
   constructor(private dbService: DbService) {}
 
-  async findUserByTelegramId(telegramId: string): Promise<TelegramUserWithChannels | null> {
+  async findUserByTelegramId(
+    telegramId: string,
+  ): Promise<TelegramUserWithChannels | null> {
     return await this.dbService.user.findFirst({
       where: {
         accounts: {
@@ -27,7 +29,9 @@ export class UserManagementService {
     });
   }
 
-  async findUserWithStats(telegramId: string): Promise<TelegramUserWithChannels | null> {
+  async findUserWithStats(
+    telegramId: string,
+  ): Promise<TelegramUserWithChannels | null> {
     return await this.dbService.user.findFirst({
       where: {
         accounts: {
@@ -54,7 +58,9 @@ export class UserManagementService {
     });
   }
 
-  async createUserWithTelegramAccount(telegramUser: TelegramBot.User): Promise<TelegramUserWithChannels> {
+  async createUserWithTelegramAccount(
+    telegramUser: TelegramBot.User,
+  ): Promise<TelegramUserWithChannels> {
     const user = await this.dbService.user.create({
       data: {
         username: telegramUser.username,
@@ -77,17 +83,21 @@ export class UserManagementService {
       },
     });
 
-    this.logger.log(`New user created: ${user.id} (Telegram: ${telegramUser.id})`);
+    this.logger.log(
+      `New user created: ${user.id} (Telegram: ${telegramUser.id})`,
+    );
     return user;
   }
 
-  async findOrCreateUser(telegramUser: TelegramBot.User): Promise<TelegramUserWithChannels> {
+  async findOrCreateUser(
+    telegramUser: TelegramBot.User,
+  ): Promise<TelegramUserWithChannels> {
     let user = await this.findUserByTelegramId(telegramUser.id.toString());
-    
+
     if (!user) {
       user = await this.createUserWithTelegramAccount(telegramUser);
     }
-    
+
     return user;
   }
-} 
+}

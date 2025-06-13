@@ -1,8 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { DbService } from "../../db/db.service";
 import { Platform, ChannelType, Channel } from "@prisma/client";
-import * as TelegramBot from "node-telegram-bot-api";
-import { ChannelWithMetadata, CreateChannelData, ChannelMetadata } from "../types/telegram.types";
+import { CreateChannelData } from "../types/telegram.types";
 
 @Injectable()
 export class ChannelManagementService {
@@ -16,11 +15,14 @@ export class ChannelManagementService {
         userId,
         platform: Platform.TELEGRAM,
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
   }
 
-  async findChannelById(channelId: string, userId: string): Promise<Channel | null> {
+  async findChannelById(
+    channelId: string,
+    userId: string,
+  ): Promise<Channel | null> {
     return await this.dbService.channel.findFirst({
       where: {
         id: channelId,
@@ -29,7 +31,10 @@ export class ChannelManagementService {
     });
   }
 
-  async findChannelByPlatformId(platformId: string, userId: string): Promise<Channel | null> {
+  async findChannelByPlatformId(
+    platformId: string,
+    userId: string,
+  ): Promise<Channel | null> {
     return await this.dbService.channel.findFirst({
       where: {
         platform: Platform.TELEGRAM,
@@ -55,11 +60,16 @@ export class ChannelManagementService {
       },
     });
 
-    this.logger.log(`Channel created: ${channel.title} (${data.platformId}) for user ${data.userId}`);
+    this.logger.log(
+      `Channel created: ${channel.title} (${data.platformId}) for user ${data.userId}`,
+    );
     return channel;
   }
 
-  async updateChannel(channelId: string, data: Partial<Channel>): Promise<Channel> {
+  async updateChannel(
+    channelId: string,
+    data: Partial<Channel>,
+  ): Promise<Channel> {
     return await this.dbService.channel.update({
       where: { id: channelId },
       data,
@@ -72,7 +82,7 @@ export class ChannelManagementService {
     });
 
     if (!channel) {
-      throw new Error('Channel not found');
+      throw new Error("Channel not found");
     }
 
     const updatedChannel = await this.dbService.channel.update({
@@ -80,7 +90,9 @@ export class ChannelManagementService {
       data: { isActive: !channel.isActive },
     });
 
-    this.logger.log(`Channel ${updatedChannel.isActive ? 'activated' : 'deactivated'}: ${channel.title}`);
+    this.logger.log(
+      `Channel ${updatedChannel.isActive ? "activated" : "deactivated"}: ${channel.title}`,
+    );
     return updatedChannel;
   }
 
@@ -97,26 +109,32 @@ export class ChannelManagementService {
     }
   }
 
-  async reactivateChannelIfExists(platformId: string, userId: string): Promise<boolean> {
-    const existingChannel = await this.findChannelByPlatformId(platformId, userId);
-    
+  async reactivateChannelIfExists(
+    platformId: string,
+    userId: string,
+  ): Promise<boolean> {
+    const existingChannel = await this.findChannelByPlatformId(
+      platformId,
+      userId,
+    );
+
     if (existingChannel && !existingChannel.isActive) {
       await this.updateChannel(existingChannel.id, { isActive: true });
       return true;
     }
-    
+
     return false;
   }
 
   getChannelType(chatType: string): ChannelType {
     switch (chatType) {
-      case 'private':
+      case "private":
         return ChannelType.PRIVATE;
-      case 'group':
+      case "group":
         return ChannelType.GROUP;
-      case 'supergroup':
+      case "supergroup":
         return ChannelType.SUPERGROUP;
-      case 'channel':
+      case "channel":
         return ChannelType.CHANNEL;
       default:
         return ChannelType.GROUP;
@@ -126,37 +144,41 @@ export class ChannelManagementService {
   getChannelTypeDisplay(type: ChannelType): string {
     switch (type) {
       case ChannelType.PRIVATE:
-        return '👤 Private Chat';
+        return "👤 Private Chat";
       case ChannelType.GROUP:
-        return '👥 Group';
+        return "👥 Group";
       case ChannelType.SUPERGROUP:
-        return '👥 Supergroup';
+        return "👥 Supergroup";
       case ChannelType.CHANNEL:
-        return '📢 Channel';
+        return "📢 Channel";
       default:
-        return '❓ Unknown';
+        return "❓ Unknown";
     }
   }
 
   formatChannelsList(channels: Channel[]): string {
-    return channels.map((channel, index) => {
-      let statusIcon;
-      if (!channel.isActive) {
-        statusIcon = "🔴"; // Inactive/Deactivated
-      } else if (channel.canPost) {
-        statusIcon = "✅"; // Active and can post
-      } else {
-        statusIcon = "⚠️"; // Active but limited permissions
-      }
-      
-      const typeDisplay = this.getChannelTypeDisplay(channel.type);
-      const memberInfo = channel.memberCount ? ` (${channel.memberCount} members)` : '';
-      const activeStatus = channel.isActive ? "" : " (INACTIVE)";
-      
-      return `${index + 1}. ${statusIcon} ${channel.title}${activeStatus}
+    return channels
+      .map((channel, index) => {
+        let statusIcon;
+        if (!channel.isActive) {
+          statusIcon = "🔴"; // Inactive/Deactivated
+        } else if (channel.canPost) {
+          statusIcon = "✅"; // Active and can post
+        } else {
+          statusIcon = "⚠️"; // Active but limited permissions
+        }
+
+        const typeDisplay = this.getChannelTypeDisplay(channel.type);
+        const memberInfo = channel.memberCount
+          ? ` (${channel.memberCount} members)`
+          : "";
+        const activeStatus = channel.isActive ? "" : " (INACTIVE)";
+
+        return `${index + 1}. ${statusIcon} ${channel.title}${activeStatus}
    🆔 ${typeDisplay}${memberInfo}
-   🔗 ${channel.username ? `@${channel.username}` : 'No username'}
+   🔗 ${channel.username ? `@${channel.username}` : "No username"}
    📅 Added: ${channel.createdAt.toDateString()}`;
-    }).join('\n\n');
+      })
+      .join("\n\n");
   }
-} 
+}

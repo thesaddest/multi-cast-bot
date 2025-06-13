@@ -4,8 +4,8 @@ import { UserManagementService } from "../services/user-management.service";
 import { ChannelManagementService } from "../services/channel-management.service";
 import { TelegramApiService } from "../services/telegram-api.service";
 import { MessageService } from "../services/message.service";
-import { TelegramHandlerContext, ChannelWithMetadata } from "../types/telegram.types";
-import { Platform, MessageType, MessageStatus } from "@prisma/client";
+import { TelegramHandlerContext } from "../types/telegram.types";
+import { Platform, MessageType, Channel } from "@prisma/client";
 
 interface BroadcastSession {
   userId: string;
@@ -15,7 +15,7 @@ interface BroadcastSession {
   mediaUrls?: string[];
   mediaTypes?: string[];
   originalMessage?: TelegramBot.Message; // Store original message for media processing
-  step: 'waiting_message' | 'confirming' | 'broadcasting';
+  step: "waiting_message" | "confirming" | "broadcasting";
 }
 
 @Injectable()
@@ -30,23 +30,32 @@ export class BroadcastHandler {
     private messageService: MessageService,
   ) {}
 
-  async handleBroadcastCommand(bot: TelegramBot, context: TelegramHandlerContext): Promise<void> {
+  async handleBroadcastCommand(
+    bot: TelegramBot,
+    context: TelegramHandlerContext,
+  ): Promise<void> {
     const { chatId, telegramUser } = context;
 
     try {
-      const user = await this.userManagementService.findUserByTelegramId(telegramUser.id.toString());
+      const user = await this.userManagementService.findUserByTelegramId(
+        telegramUser.id.toString(),
+      );
       if (!user) {
         await this.telegramApiService.sendMessage(
           bot,
           chatId,
-          "❌ User not found. Please use /start to create an account."
+          "❌ User not found. Please use /start to create an account.",
         );
         return;
       }
 
       // Get user's active channels
-      const channels = await this.channelManagementService.getUserChannels(user.id);
-      const activeChannels = channels.filter(channel => channel.isActive && channel.canPost);
+      const channels = await this.channelManagementService.getUserChannels(
+        user.id,
+      );
+      const activeChannels = channels.filter(
+        (channel) => channel.isActive && channel.canPost,
+      );
 
       if (activeChannels.length === 0) {
         await this.telegramApiService.sendMessage(
@@ -61,7 +70,7 @@ To broadcast messages, you need to:
 2️⃣ Make sure the bot has posting permissions
 3️⃣ Activate the channels you want to use
 
-Use "📋 My Channels" to manage your channels.`
+Use "📋 My Channels" to manage your channels.`,
         );
         return;
       }
@@ -69,14 +78,17 @@ Use "📋 My Channels" to manage your channels.`
       // Start broadcast session
       this.broadcastSessions.set(chatId, {
         userId: user.id,
-        message: '',
+        message: "",
         messageType: MessageType.TEXT,
-        step: 'waiting_message'
+        step: "waiting_message",
       });
 
       const channelList = activeChannels
-        .map((channel, index) => `${index + 1}. ${channel.title} ${this.getChannelTypeEmoji(channel.type)}`)
-        .join('\n');
+        .map(
+          (channel, index) =>
+            `${index + 1}. ${channel.title} ${this.getChannelTypeEmoji(channel.type)}`,
+        )
+        .join("\n");
 
       await this.telegramApiService.sendMessage(
         bot,
@@ -94,35 +106,37 @@ ${channelList}
 • Media files will be posted natively (not forwarded)
 • Use formatting: *bold*, _italic_, \`code\`
 • Type /cancel to cancel broadcasting`,
-        { parse_mode: 'Markdown' }
+        { parse_mode: "Markdown" },
       );
-
     } catch (error) {
       this.logger.error("Error starting broadcast:", error);
       await this.telegramApiService.sendMessage(
         bot,
         chatId,
-        "❌ Error starting broadcast. Please try again."
+        "❌ Error starting broadcast. Please try again.",
       );
     }
   }
 
-  async handleBroadcastMessage(bot: TelegramBot, msg: TelegramBot.Message): Promise<void> {
+  async handleBroadcastMessage(
+    bot: TelegramBot,
+    msg: TelegramBot.Message,
+  ): Promise<void> {
     const chatId = msg.chat.id;
     const session = this.broadcastSessions.get(chatId);
 
-    if (!session || session.step !== 'waiting_message') {
+    if (!session || session.step !== "waiting_message") {
       return;
     }
 
     try {
       // Handle cancel command
-      if (msg.text === '/cancel') {
+      if (msg.text === "/cancel") {
         this.broadcastSessions.delete(chatId);
         await this.telegramApiService.sendMessage(
           bot,
           chatId,
-          "❌ Broadcast cancelled."
+          "❌ Broadcast cancelled.",
         );
         return;
       }
@@ -134,15 +148,22 @@ ${channelList}
       session.mediaUrls = this.extractMediaUrls(msg);
       session.mediaTypes = this.extractMediaTypes(msg);
       session.originalMessage = msg; // Store for native message sending
-      session.step = 'confirming';
+      session.step = "confirming";
 
       // Get user's active channels for confirmation
-      const channels = await this.channelManagementService.getUserChannels(session.userId);
-      const activeChannels = channels.filter(channel => channel.isActive && channel.canPost);
+      const channels = await this.channelManagementService.getUserChannels(
+        session.userId,
+      );
+      const activeChannels = channels.filter(
+        (channel) => channel.isActive && channel.canPost,
+      );
 
       const channelList = activeChannels
-        .map((channel, index) => `${index + 1}. ${channel.title} ${this.getChannelTypeEmoji(channel.type)}`)
-        .join('\n');
+        .map(
+          (channel, index) =>
+            `${index + 1}. ${channel.title} ${this.getChannelTypeEmoji(channel.type)}`,
+        )
+        .join("\n");
 
       const confirmationMessage = `📢 Confirm Broadcast
 
@@ -151,7 +172,7 @@ Your message will be sent to ${activeChannels.length} channel(s):
 ${channelList}
 
 📝 Message Preview:
-${session.message.length > 200 ? session.message.substring(0, 200) + '...' : session.message}
+${session.message.length > 200 ? session.message.substring(0, 200) + "..." : session.message}
 
 Are you sure you want to broadcast this message?`;
 
@@ -159,80 +180,92 @@ Are you sure you want to broadcast this message?`;
         inline_keyboard: [
           [
             { text: "✅ Send to All", callback_data: "broadcast_confirm" },
-            { text: "❌ Cancel", callback_data: "broadcast_cancel" }
-          ]
-        ]
+            { text: "❌ Cancel", callback_data: "broadcast_cancel" },
+          ],
+        ],
       };
 
       await this.telegramApiService.sendMessage(
         bot,
         chatId,
         confirmationMessage,
-        { reply_markup: keyboard }
+        { reply_markup: keyboard },
       );
-
     } catch (error) {
       this.logger.error("Error handling broadcast message:", error);
       await this.telegramApiService.sendMessage(
         bot,
         chatId,
-        "❌ Error processing your message. Please try again."
+        "❌ Error processing your message. Please try again.",
       );
     }
   }
 
-  async handleBroadcastConfirmation(bot: TelegramBot, callbackQuery: TelegramBot.CallbackQuery): Promise<void> {
+  async handleBroadcastConfirmation(
+    bot: TelegramBot,
+    callbackQuery: TelegramBot.CallbackQuery,
+  ): Promise<void> {
     const chatId = callbackQuery.message?.chat.id;
     if (!chatId) return;
 
     const session = this.broadcastSessions.get(chatId);
-    if (!session || session.step !== 'confirming') {
-      await bot.answerCallbackQuery(callbackQuery.id, { text: "Session expired. Please start again." });
+    if (!session || session.step !== "confirming") {
+      await bot.answerCallbackQuery(callbackQuery.id, {
+        text: "Session expired. Please start again.",
+      });
       return;
     }
 
     try {
-      if (callbackQuery.data === 'broadcast_cancel') {
+      if (callbackQuery.data === "broadcast_cancel") {
         this.broadcastSessions.delete(chatId);
-        await bot.editMessageText(
-          "❌ Broadcast cancelled.",
-          {
-            chat_id: chatId,
-            message_id: callbackQuery.message?.message_id
-          }
-        );
+        await bot.editMessageText("❌ Broadcast cancelled.", {
+          chat_id: chatId,
+          message_id: callbackQuery.message?.message_id,
+        });
         await bot.answerCallbackQuery(callbackQuery.id, { text: "Cancelled" });
         return;
       }
 
-      if (callbackQuery.data === 'broadcast_confirm') {
-        session.step = 'broadcasting';
-        
+      if (callbackQuery.data === "broadcast_confirm") {
+        session.step = "broadcasting";
+
         await bot.editMessageText(
           "📡 Broadcasting message...\n\nPlease wait while we send your message to all channels.",
           {
             chat_id: chatId,
-            message_id: callbackQuery.message?.message_id
-          }
+            message_id: callbackQuery.message?.message_id,
+          },
         );
 
-        await bot.answerCallbackQuery(callbackQuery.id, { text: "Broadcasting..." });
+        await bot.answerCallbackQuery(callbackQuery.id, {
+          text: "Broadcasting...",
+        });
 
         // Start the actual broadcasting
         await this.executeBroadcast(bot, session, chatId);
       }
-
     } catch (error) {
       this.logger.error("Error handling broadcast confirmation:", error);
-      await bot.answerCallbackQuery(callbackQuery.id, { text: "Error occurred" });
+      await bot.answerCallbackQuery(callbackQuery.id, {
+        text: "Error occurred",
+      });
     }
   }
 
-  private async executeBroadcast(bot: TelegramBot, session: BroadcastSession, chatId: number): Promise<void> {
+  private async executeBroadcast(
+    bot: TelegramBot,
+    session: BroadcastSession,
+    chatId: number,
+  ): Promise<void> {
     try {
       // Get user's active channels
-      const channels = await this.channelManagementService.getUserChannels(session.userId);
-      const activeChannels = channels.filter(channel => channel.isActive && channel.canPost);
+      const channels = await this.channelManagementService.getUserChannels(
+        session.userId,
+      );
+      const activeChannels = channels.filter(
+        (channel) => channel.isActive && channel.canPost,
+      );
 
       let successCount = 0;
       let failureCount = 0;
@@ -257,27 +290,39 @@ Are you sure you want to broadcast this message?`;
             },
           });
 
-          let sentMessage;
           // Send native message instead of forwarding
-          sentMessage = await this.sendNativeMessage(bot, channel, session, chatId);
+          const sentMessage = await this.sendNativeMessage(
+            bot,
+            channel,
+            session,
+            chatId,
+          );
 
           // Update message record as sent
-          await this.messageService.markMessageAsSent(dbMessage.id, sentMessage.message_id.toString());
+          await this.messageService.markMessageAsSent(
+            dbMessage.id,
+            sentMessage.message_id.toString(),
+          );
 
           successCount++;
           results.push(`✅ ${channel.title}`);
-          
-          // Small delay to avoid rate limiting
-          await new Promise(resolve => setTimeout(resolve, 100));
 
+          // Small delay to avoid rate limiting
+          await new Promise((resolve) => setTimeout(resolve, 100));
         } catch (error) {
           failureCount++;
           results.push(`❌ ${channel.title} - ${error.message}`);
-          this.logger.warn(`Failed to send to ${channel.title}:`, error.message);
+          this.logger.warn(
+            `Failed to send to ${channel.title}:`,
+            error.message,
+          );
 
           // Update message record as failed if it was created
           if (dbMessage) {
-            await this.messageService.markMessageAsFailed(dbMessage.id, error.message);
+            await this.messageService.markMessageAsFailed(
+              dbMessage.id,
+              error.message,
+            );
           }
         }
       }
@@ -290,21 +335,20 @@ Are you sure you want to broadcast this message?`;
 📊 Total channels: ${activeChannels.length}
 
 📋 Detailed Results:
-${results.join('\n')}
+${results.join("\n")}
 
-${failureCount > 0 ? '\n💡 Failed channels may have restricted bot permissions or be inactive.' : ''}`;
+${failureCount > 0 ? "\n💡 Failed channels may have restricted bot permissions or be inactive." : ""}`;
 
       await this.telegramApiService.sendMessage(bot, chatId, summaryMessage);
 
       // Clean up session
       this.broadcastSessions.delete(chatId);
-
     } catch (error) {
       this.logger.error("Error executing broadcast:", error);
       await this.telegramApiService.sendMessage(
         bot,
         chatId,
-        "❌ Error during broadcast. Some messages may not have been sent."
+        "❌ Error during broadcast. Some messages may not have been sent.",
       );
       this.broadcastSessions.delete(chatId);
     }
@@ -312,14 +356,18 @@ ${failureCount > 0 ? '\n💡 Failed channels may have restricted bot permissions
 
   private getChannelTypeEmoji(type: string): string {
     switch (type) {
-      case 'CHANNEL': return '📺';
-      case 'GROUP': return '👥';
-      case 'SUPERGROUP': return '🏢';
-      default: return '📱';
+      case "CHANNEL":
+        return "📺";
+      case "GROUP":
+        return "👥";
+      case "SUPERGROUP":
+        return "🏢";
+      default:
+        return "📱";
     }
   }
 
-  private getMessageTypeFromTelegramMessage(messageId?: number): MessageType {
+  private getMessageTypeFromTelegramMessage(_messageId?: number): MessageType {
     // Since we don't have access to the original message object here,
     // we'll default to TEXT. For more accurate typing, you could pass
     // the original message object to the broadcast session
@@ -329,16 +377,16 @@ ${failureCount > 0 ? '\n💡 Failed channels may have restricted bot permissions
   private extractMessageContent(msg: TelegramBot.Message): string {
     if (msg.text) return msg.text;
     if (msg.caption) return msg.caption;
-    if (msg.photo) return '[Photo]';
-    if (msg.video) return '[Video]';
-    if (msg.document) return '[Document]';
-    if (msg.audio) return '[Audio]';
-    if (msg.voice) return '[Voice]';
-    if (msg.sticker) return '[Sticker]';
-    if (msg.animation) return '[GIF]';
-    if (msg.poll) return '[Poll]';
-    if (msg.location) return '[Location]';
-    return '[Media message]';
+    if (msg.photo) return "[Photo]";
+    if (msg.video) return "[Video]";
+    if (msg.document) return "[Document]";
+    if (msg.audio) return "[Audio]";
+    if (msg.voice) return "[Voice]";
+    if (msg.sticker) return "[Sticker]";
+    if (msg.animation) return "[GIF]";
+    if (msg.poll) return "[Poll]";
+    if (msg.location) return "[Location]";
+    return "[Media message]";
   }
 
   private detectMessageType(msg: TelegramBot.Message): MessageType {
@@ -355,68 +403,68 @@ ${failureCount > 0 ? '\n💡 Failed channels may have restricted bot permissions
 
   private extractMediaUrls(msg: TelegramBot.Message): string[] {
     const urls: string[] = [];
-    
+
     if (msg.photo && msg.photo.length > 0) {
       // Get the highest resolution photo
       const photo = msg.photo[msg.photo.length - 1];
       urls.push(photo.file_id);
     }
-    
+
     if (msg.video) {
       urls.push(msg.video.file_id);
     }
-    
+
     if (msg.document) {
       urls.push(msg.document.file_id);
     }
-    
+
     if (msg.audio) {
       urls.push(msg.audio.file_id);
     }
-    
+
     if (msg.voice) {
       urls.push(msg.voice.file_id);
     }
-    
+
     if (msg.animation) {
       urls.push(msg.animation.file_id);
     }
-    
+
     if (msg.sticker) {
       urls.push(msg.sticker.file_id);
     }
-    
+
     return urls;
   }
 
   private extractMediaTypes(msg: TelegramBot.Message): string[] {
     const types: string[] = [];
-    
-    if (msg.photo) types.push('photo');
-    if (msg.video) types.push('video');
-    if (msg.document) types.push('document');
-    if (msg.audio) types.push('audio');
-    if (msg.voice) types.push('voice');
-    if (msg.animation) types.push('animation');
-    if (msg.sticker) types.push('sticker');
-    
+
+    if (msg.photo) types.push("photo");
+    if (msg.video) types.push("video");
+    if (msg.document) types.push("document");
+    if (msg.audio) types.push("audio");
+    if (msg.voice) types.push("voice");
+    if (msg.animation) types.push("animation");
+    if (msg.sticker) types.push("sticker");
+
     return types;
   }
 
   private async sendNativeMessage(
-    bot: TelegramBot, 
-    channel: any, 
-    session: BroadcastSession, 
-    originalChatId: number
+    bot: TelegramBot,
+    channel: Channel,
+    session: BroadcastSession,
+    _originalChatId: number,
   ): Promise<TelegramBot.Message> {
     const channelId = parseInt(channel.platformId);
-    
+
     // If there's no original message or media, send as text
     if (!session.originalMessage || session.messageType === MessageType.TEXT) {
       return await this.telegramApiService.sendMessage(
         bot,
         channelId,
-        session.message
+        session.message,
       );
     }
 
@@ -424,80 +472,89 @@ ${failureCount > 0 ? '\n💡 Failed channels may have restricted bot permissions
     try {
       return await this.sendMessageByType(bot, channelId, session);
     } catch (error) {
-      this.logger.warn(`Failed to send native message, falling back to text: ${error.message}`);
+      this.logger.warn(
+        `Failed to send native message, falling back to text: ${error.message}`,
+      );
       // Fallback to text message
       return await this.telegramApiService.sendMessage(
         bot,
         channelId,
-        session.message
+        session.message,
       );
     }
   }
 
-
-
   private async sendMessageByType(
     bot: TelegramBot,
     channelId: number,
-    session: BroadcastSession
+    session: BroadcastSession,
   ): Promise<TelegramBot.Message> {
-    const messageText = session.message !== '[Media message]' ? session.message : undefined;
-    
+    const messageText =
+      session.message !== "[Media message]" ? session.message : undefined;
+
     // Send based on message type
     switch (session.messageType) {
       case MessageType.PHOTO:
         if (session.mediaUrls && session.mediaUrls.length > 0) {
           return await bot.sendPhoto(channelId, session.mediaUrls[0], {
-            caption: messageText
+            caption: messageText,
           });
         }
         break;
-        
+
       case MessageType.VIDEO:
         if (session.mediaUrls && session.mediaUrls.length > 0) {
           return await bot.sendVideo(channelId, session.mediaUrls[0], {
-            caption: messageText
+            caption: messageText,
           });
         }
         break;
-        
+
       case MessageType.DOCUMENT:
         if (session.mediaUrls && session.mediaUrls.length > 0) {
           return await bot.sendDocument(channelId, session.mediaUrls[0], {
-            caption: messageText
+            caption: messageText,
           });
         }
         break;
-        
+
       case MessageType.AUDIO:
         if (session.mediaUrls && session.mediaUrls.length > 0) {
           return await bot.sendAudio(channelId, session.mediaUrls[0], {
-            caption: messageText
+            caption: messageText,
           });
         }
         break;
-        
+
       case MessageType.GIF:
         if (session.mediaUrls && session.mediaUrls.length > 0) {
           return await bot.sendAnimation(channelId, session.mediaUrls[0], {
-            caption: messageText
+            caption: messageText,
           });
         }
         break;
-        
+
       case MessageType.STICKER:
         if (session.mediaUrls && session.mediaUrls.length > 0) {
           return await bot.sendSticker(channelId, session.mediaUrls[0]);
         }
         break;
-        
+
       default:
         // Fallback to text for any unhandled types
-        return await this.telegramApiService.sendMessage(bot, channelId, session.message);
+        return await this.telegramApiService.sendMessage(
+          bot,
+          channelId,
+          session.message,
+        );
     }
-    
+
     // If we get here, something went wrong, send as text
-    return await this.telegramApiService.sendMessage(bot, channelId, session.message);
+    return await this.telegramApiService.sendMessage(
+      bot,
+      channelId,
+      session.message,
+    );
   }
 
   // Check if user has an active broadcast session
@@ -514,4 +571,4 @@ ${failureCount > 0 ? '\n💡 Failed channels may have restricted bot permissions
   cancelBroadcastSession(chatId: number): void {
     this.broadcastSessions.delete(chatId);
   }
-} 
+}

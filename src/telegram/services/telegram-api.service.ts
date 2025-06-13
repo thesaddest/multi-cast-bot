@@ -1,16 +1,25 @@
 import { Injectable, Logger } from "@nestjs/common";
 import * as TelegramBot from "node-telegram-bot-api";
-import { BotPermissions, TelegramChatMemberAdministrator } from "../types/telegram.types";
+import {
+  BotPermissions,
+  TelegramChatMemberAdministrator,
+} from "../types/telegram.types";
 
 @Injectable()
 export class TelegramApiService {
   private readonly logger = new Logger(TelegramApiService.name);
 
-  async getChatInfo(bot: TelegramBot, chatId: number | string): Promise<TelegramBot.Chat> {
+  async getChatInfo(
+    bot: TelegramBot,
+    chatId: number | string,
+  ): Promise<TelegramBot.Chat> {
     return await bot.getChat(chatId);
   }
 
-  async getChatMemberCount(bot: TelegramBot, chatId: number | string): Promise<number | undefined> {
+  async getChatMemberCount(
+    bot: TelegramBot,
+    chatId: number | string,
+  ): Promise<number | undefined> {
     try {
       return await bot.getChatMemberCount(chatId);
     } catch (error) {
@@ -19,20 +28,25 @@ export class TelegramApiService {
     }
   }
 
-  async getBotPermissions(bot: TelegramBot, chatId: number | string): Promise<BotPermissions> {
+  async getBotPermissions(
+    bot: TelegramBot,
+    chatId: number | string,
+  ): Promise<BotPermissions> {
     try {
       const botInfo = await bot.getMe();
       const chatMember = await bot.getChatMember(chatId, botInfo.id);
-      const isAdmin = chatMember.status === 'administrator' || chatMember.status === 'creator';
-      
+      const isAdmin =
+        chatMember.status === "administrator" ||
+        chatMember.status === "creator";
+
       let canPost = false;
-      if (isAdmin && chatMember.status === 'administrator') {
+      if (isAdmin && chatMember.status === "administrator") {
         const adminMember = chatMember as TelegramChatMemberAdministrator;
         canPost = adminMember.can_post_messages !== false;
-      } else if (chatMember.status === 'creator') {
+      } else if (chatMember.status === "creator") {
         canPost = true; // Creator can always post
       }
-      
+
       return { isAdmin, canPost };
     } catch (error) {
       this.logger.warn(`Could not check bot permissions in ${chatId}`);
@@ -44,7 +58,7 @@ export class TelegramApiService {
     bot: TelegramBot,
     chatId: number,
     text: string,
-    options?: TelegramBot.SendMessageOptions
+    options?: TelegramBot.SendMessageOptions,
   ): Promise<TelegramBot.Message> {
     return await bot.sendMessage(chatId, text, options);
   }
@@ -52,7 +66,7 @@ export class TelegramApiService {
   async answerCallbackQuery(
     bot: TelegramBot,
     callbackQueryId: string,
-    options?: TelegramBot.AnswerCallbackQueryOptions
+    options?: TelegramBot.AnswerCallbackQueryOptions,
   ): Promise<boolean> {
     return await bot.answerCallbackQuery(callbackQueryId, options);
   }
@@ -60,14 +74,16 @@ export class TelegramApiService {
   async editMessageText(
     bot: TelegramBot,
     text: string,
-    options: TelegramBot.EditMessageTextOptions
+    options: TelegramBot.EditMessageTextOptions,
   ): Promise<TelegramBot.Message | boolean> {
     return await bot.editMessageText(text, options);
   }
 
-  createInlineKeyboard(buttons: TelegramBot.InlineKeyboardButton[][]): TelegramBot.InlineKeyboardMarkup {
+  createInlineKeyboard(
+    buttons: TelegramBot.InlineKeyboardButton[][],
+  ): TelegramBot.InlineKeyboardMarkup {
     return {
-      inline_keyboard: buttons
+      inline_keyboard: buttons,
     };
   }
 
@@ -77,7 +93,7 @@ export class TelegramApiService {
       resize_keyboard?: boolean;
       one_time_keyboard?: boolean;
       is_persistent?: boolean;
-    }
+    },
   ): TelegramBot.ReplyKeyboardMarkup {
     return {
       keyboard: buttons,
@@ -86,4 +102,4 @@ export class TelegramApiService {
       is_persistent: options?.is_persistent ?? true,
     };
   }
-} 
+}

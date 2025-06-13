@@ -54,8 +54,9 @@ export interface BotPermissions {
 }
 
 // Extended Telegram types for better type safety
-export interface TelegramChatMemberAdministrator extends TelegramBot.ChatMember {
-  status: 'administrator';
+export interface TelegramChatMemberAdministrator
+  extends TelegramBot.ChatMember {
+  status: "administrator";
   can_post_messages?: boolean;
   can_edit_messages?: boolean;
   can_delete_messages?: boolean;
@@ -70,4 +71,4 @@ export interface BotCommandHandler {
 export interface CallbackHandler {
   pattern: string;
   handler: (context: TelegramHandlerContext, data: string) => Promise<void>;
-} 
+}

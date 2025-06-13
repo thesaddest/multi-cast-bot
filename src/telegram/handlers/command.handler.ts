@@ -15,17 +15,26 @@ export class CommandHandler {
     private messageService: MessageService,
   ) {}
 
-  async handleStart(bot: TelegramBot, context: TelegramHandlerContext): Promise<void> {
+  async handleStart(
+    bot: TelegramBot,
+    context: TelegramHandlerContext,
+  ): Promise<void> {
     const { chatId, telegramUser } = context;
 
     if (!telegramUser) {
-      await this.telegramApiService.sendMessage(bot, chatId, "❌ Unable to get user information");
+      await this.telegramApiService.sendMessage(
+        bot,
+        chatId,
+        "❌ Unable to get user information",
+      );
       return;
     }
 
     try {
       // Check if user already exists
-      let user = await this.userManagementService.findUserByTelegramId(telegramUser.id.toString());
+      let user = await this.userManagementService.findUserByTelegramId(
+        telegramUser.id.toString(),
+      );
 
       if (user) {
         await this.telegramApiService.sendMessage(
@@ -38,7 +47,10 @@ export class CommandHandler {
       }
 
       // Create new user
-      user = await this.userManagementService.createUserWithTelegramAccount(telegramUser);
+      user =
+        await this.userManagementService.createUserWithTelegramAccount(
+          telegramUser,
+        );
 
       const welcomeMessage = `🚀 Welcome to Multi-Platform Bot, ${telegramUser.first_name}!
 
@@ -54,7 +66,6 @@ What you can do:
 
       await this.telegramApiService.sendMessage(bot, chatId, welcomeMessage);
       await this.showMainMenu(bot, chatId);
-
     } catch (error) {
       this.logger.error("Error creating user:", error);
       await this.telegramApiService.sendMessage(
@@ -70,26 +81,34 @@ What you can do:
 
 Choose what you'd like to do:`;
 
-    const keyboard = this.telegramApiService.createReplyKeyboard([
-      [{ text: "👤 Profile" }, { text: "📋 My Channels" }],
-      [{ text: "➕ Add Channel" }, { text: "📢 Send Message" }],
-      [{ text: "📜 Message History" }, { text: "📊 Statistics" }]
-    ], {
-      resize_keyboard: true,
-      one_time_keyboard: false,
-      is_persistent: true,
-    });
+    const keyboard = this.telegramApiService.createReplyKeyboard(
+      [
+        [{ text: "👤 Profile" }, { text: "📋 My Channels" }],
+        [{ text: "➕ Add Channel" }, { text: "📢 Send Message" }],
+        [{ text: "📜 Message History" }, { text: "📊 Statistics" }],
+      ],
+      {
+        resize_keyboard: true,
+        one_time_keyboard: false,
+        is_persistent: true,
+      },
+    );
 
     await this.telegramApiService.sendMessage(bot, chatId, menuMessage, {
       reply_markup: keyboard,
     });
   }
 
-  async handleProfile(bot: TelegramBot, context: TelegramHandlerContext): Promise<void> {
+  async handleProfile(
+    bot: TelegramBot,
+    context: TelegramHandlerContext,
+  ): Promise<void> {
     const { chatId, telegramUser } = context;
 
     try {
-      const user = await this.userManagementService.findUserWithStats(telegramUser.id.toString());
+      const user = await this.userManagementService.findUserWithStats(
+        telegramUser.id.toString(),
+      );
 
       if (!user) {
         await this.telegramApiService.sendMessage(
@@ -132,16 +151,21 @@ ${platformList || "None"}
     }
   }
 
-  async handleMessageHistory(bot: TelegramBot, context: TelegramHandlerContext): Promise<void> {
+  async handleMessageHistory(
+    bot: TelegramBot,
+    context: TelegramHandlerContext,
+  ): Promise<void> {
     const { chatId, telegramUser } = context;
 
     try {
-      const user = await this.userManagementService.findUserByTelegramId(telegramUser.id.toString());
+      const user = await this.userManagementService.findUserByTelegramId(
+        telegramUser.id.toString(),
+      );
       if (!user) {
         await this.telegramApiService.sendMessage(
           bot,
           chatId,
-          "❌ User not found. Please use /start to create an account."
+          "❌ User not found. Please use /start to create an account.",
         );
         return;
       }
@@ -152,7 +176,7 @@ ${platformList || "None"}
         await this.telegramApiService.sendMessage(
           bot,
           chatId,
-          "📭 No messages found.\n\nYou haven't sent any messages yet. Use '📢 Send Message' to broadcast your first message!"
+          "📭 No messages found.\n\nYou haven't sent any messages yet. Use '📢 Send Message' to broadcast your first message!",
         );
         return;
       }
@@ -161,13 +185,18 @@ ${platformList || "None"}
         .map((msg, index) => {
           const status = this.getStatusEmoji(msg.status);
           const type = this.getMessageTypeEmoji(msg.messageType);
-          const date = msg.sentAt ? msg.sentAt.toLocaleDateString() : msg.createdAt.toLocaleDateString();
-          const content = msg.content.length > 50 ? msg.content.substring(0, 50) + '...' : msg.content;
-          const channelTitle = (msg as any).channel?.title || 'Unknown Channel';
-          
+          const date = msg.sentAt
+            ? msg.sentAt.toLocaleDateString()
+            : msg.createdAt.toLocaleDateString();
+          const content =
+            msg.content.length > 50
+              ? msg.content.substring(0, 50) + "..."
+              : msg.content;
+          const channelTitle = (msg as any).channel?.title || "Unknown Channel";
+
           return `${index + 1}. ${status} ${type} ${channelTitle}\n   "${content}"\n   📅 ${date}`;
         })
-        .join('\n\n');
+        .join("\n\n");
 
       const historyMessage = `📜 Message History (Last 10)
 
@@ -179,40 +208,55 @@ Legend:
 Use /messages_detailed for more information about specific messages.`;
 
       await this.telegramApiService.sendMessage(bot, chatId, historyMessage);
-
     } catch (error) {
       this.logger.error("Error fetching message history:", error);
       await this.telegramApiService.sendMessage(
         bot,
         chatId,
-        "❌ Error fetching message history. Please try again."
+        "❌ Error fetching message history. Please try again.",
       );
     }
   }
 
   private getStatusEmoji(status: string): string {
     switch (status) {
-      case 'SENT': return '✅';
-      case 'FAILED': return '❌';
-      case 'PENDING': return '⏳';
-      case 'SCHEDULED': return '📤';
-      case 'CANCELLED': return '🚫';
-      default: return '❓';
+      case "SENT":
+        return "✅";
+      case "FAILED":
+        return "❌";
+      case "PENDING":
+        return "⏳";
+      case "SCHEDULED":
+        return "📤";
+      case "CANCELLED":
+        return "🚫";
+      default:
+        return "❓";
     }
   }
 
   private getMessageTypeEmoji(type: string): string {
     switch (type) {
-      case 'TEXT': return '💬';
-      case 'PHOTO': return '📷';
-      case 'VIDEO': return '🎥';
-      case 'DOCUMENT': return '📄';
-      case 'AUDIO': return '🎵';
-      case 'GIF': return '🎬';
-      case 'STICKER': return '😀';
-      case 'POLL': return '📊';
-      case 'LOCATION': return '📍';
-      default: return '💬';
+      case "TEXT":
+        return "💬";
+      case "PHOTO":
+        return "📷";
+      case "VIDEO":
+        return "🎥";
+      case "DOCUMENT":
+        return "📄";
+      case "AUDIO":
+        return "🎵";
+      case "GIF":
+        return "🎬";
+      case "STICKER":
+        return "😀";
+      case "POLL":
+        return "📊";
+      case "LOCATION":
+        return "📍";
+      default:
+        return "💬";
     }
   }
-} 
+}
