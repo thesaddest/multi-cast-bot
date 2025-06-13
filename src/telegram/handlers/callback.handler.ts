@@ -56,9 +56,7 @@ export class CallbackHandler {
         await this.commandHandler.handleProfile(bot, context);
         break;
 
-      case "main_menu":
-        await this.commandHandler.showMainMenu(bot, chatId);
-        break;
+
 
       case "channels_list":
         await this.channelHandler.handleChannelsList(bot, context);
@@ -132,7 +130,6 @@ ${channel.isActive ? '🟢 Active' : '🔴 Inactive'}`;
         ],
         [{ text: "🔄 Refresh Info", callback_data: `refresh_channel_${channelId}` }],
         [{ text: "📋 Back to Channels", callback_data: "channels_list" }],
-        [{ text: "🏠 Main Menu", callback_data: "main_menu" }],
       ];
 
       await this.telegramApiService.sendMessage(bot, chatId, managementMessage, {
@@ -169,7 +166,6 @@ ${channel.isActive ? '🟢 Active' : '🔴 Inactive'}`;
 
       const keyboard = [
         [{ text: "📋 Back to Channels", callback_data: "channels_list" }],
-        [{ text: "🏠 Main Menu", callback_data: "main_menu" }],
       ];
 
       await this.telegramApiService.sendMessage(bot, chatId, statusMessage, {
@@ -253,7 +249,6 @@ You can add it back anytime by adding the bot to the channel again or using the 
       const keyboard = [
         [{ text: "➕ Add Channel", callback_data: "add_channel" }],
         [{ text: "📋 My Channels", callback_data: "channels_list" }],
-        [{ text: "🏠 Main Menu", callback_data: "main_menu" }],
       ];
 
       await this.telegramApiService.sendMessage(bot, chatId, successMessage, {
@@ -324,7 +319,6 @@ Information has been refreshed successfully!`;
         const keyboard = [
           [{ text: "⚙️ Manage Channel", callback_data: `manage_channel_${channelId}` }],
           [{ text: "📋 Back to Channels", callback_data: "channels_list" }],
-          [{ text: "🏠 Main Menu", callback_data: "main_menu" }],
         ];
 
         await this.telegramApiService.sendMessage(bot, chatId, refreshMessage, {

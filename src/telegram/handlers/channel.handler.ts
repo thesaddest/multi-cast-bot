@@ -80,7 +80,6 @@ Note: For private channels/groups, use Method 1 (auto-detection) by adding the b
 
     const keyboard = [
       [{ text: "📋 My Channels", callback_data: "channels_list" }],
-      [{ text: "🏠 Main Menu", callback_data: "main_menu" }],
     ];
 
     await this.telegramApiService.sendMessage(bot, chatId, instructionsMessage, {
@@ -163,7 +162,6 @@ You can now send messages to this channel!`;
       const keyboard = [
         [{ text: "📋 View All Channels", callback_data: "channels_list" }],
         [{ text: "📢 Send Message", callback_data: "send_message" }],
-        [{ text: "🏠 Main Menu", callback_data: "main_menu" }],
       ];
 
       await this.telegramApiService.sendMessage(bot, chatId, successMessage, {
@@ -238,7 +236,6 @@ The bot will automatically detect when you add it to channels.`;
 
     const keyboard = [
       [{ text: "➕ Add Channel", callback_data: "add_channel" }],
-      [{ text: "🏠 Main Menu", callback_data: "main_menu" }],
     ];
 
     await this.telegramApiService.sendMessage(bot, chatId, noChannelsMessage, {
@@ -266,7 +263,7 @@ The bot will automatically detect when you add it to channels.`;
       { text: "➕ Add Channel", callback_data: "add_channel" },
       { text: "🔄 Refresh", callback_data: "refresh_channels" }
     ]);
-    keyboard.push([{ text: "🏠 Main Menu", callback_data: "main_menu" }]);
+
 
     return keyboard;
   }

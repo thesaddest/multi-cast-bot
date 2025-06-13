@@ -46,13 +46,17 @@ export class TelegramService implements OnModuleInit {
     this.bot.onText(/\/profile/, this.handleCommand.bind(this, 'profile'));
     this.bot.onText(/\/channels/, this.handleCommand.bind(this, 'channels'));
     this.bot.onText(/\/add_channel/, this.handleCommand.bind(this, 'add_channel'));
-    this.bot.onText(/\/main_menu/, this.handleCommand.bind(this, 'main_menu'));
+    this.bot.onText(/\/messages/, this.handleCommand.bind(this, 'messages'));
+    this.bot.onText(/\/menu/, this.handleCommand.bind(this, 'menu'));
+
 
     // Button text handlers
     this.bot.onText(/^👤 Profile$/, this.handleCommand.bind(this, 'profile'));
     this.bot.onText(/^📋 My Channels$/, this.handleCommand.bind(this, 'channels'));
     this.bot.onText(/^➕ Add Channel$/, this.handleCommand.bind(this, 'add_channel'));
     this.bot.onText(/^📢 Send Message$/, this.handleCommand.bind(this, 'broadcast'));
+    this.bot.onText(/^📜 Message History$/, this.handleCommand.bind(this, 'messages'));
+    this.bot.onText(/^📊 Statistics$/, this.handleCommand.bind(this, 'statistics'));
 
     // Channel username input handler
     this.bot.onText(/^@([a-zA-Z0-9_]+)$/, this.handleChannelUsernameInput.bind(this));
@@ -101,8 +105,14 @@ export class TelegramService implements OnModuleInit {
         case 'broadcast':
           await this.broadcastHandler.handleBroadcastCommand(this.bot, context);
           break;
-        case 'main_menu':
-          await this.commandHandler.showMainMenu(this.bot, msg.chat.id);
+        case 'messages':
+          await this.commandHandler.handleMessageHistory(this.bot, context);
+          break;
+        case 'menu':
+          await this.commandHandler.showMainMenu(this.bot, context.chatId);
+          break;
+        case 'statistics':
+          await this.telegramApiService.sendMessage(this.bot, context.chatId, "📊 Statistics feature coming soon!");
           break;
         default:
           this.logger.warn(`Unknown command: ${command}`);
@@ -200,6 +210,8 @@ export class TelegramService implements OnModuleInit {
         msg.text === '📋 My Channels' || 
         msg.text === '➕ Add Channel' || 
         msg.text === '📢 Send Message' ||
+        msg.text === '📜 Message History' ||
+        msg.text === '📊 Statistics' ||
         msg.text?.startsWith('@')) {
       return;
     }

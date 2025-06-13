@@ -3,12 +3,17 @@ import * as TelegramBot from "node-telegram-bot-api";
 import { UserManagementService } from "../services/user-management.service";
 import { ChannelManagementService } from "../services/channel-management.service";
 import { TelegramApiService } from "../services/telegram-api.service";
+import { MessageService } from "../services/message.service";
 import { TelegramHandlerContext, ChannelWithMetadata } from "../types/telegram.types";
+import { Platform, MessageType, MessageStatus } from "@prisma/client";
 
 interface BroadcastSession {
   userId: string;
   message: string;
   messageId?: number;
+  messageType: MessageType;
+  mediaUrls?: string[];
+  mediaTypes?: string[];
   step: 'waiting_message' | 'confirming' | 'broadcasting';
 }
 
@@ -21,6 +26,7 @@ export class BroadcastHandler {
     private userManagementService: UserManagementService,
     private channelManagementService: ChannelManagementService,
     private telegramApiService: TelegramApiService,
+    private messageService: MessageService,
   ) {}
 
   async handleBroadcastCommand(bot: TelegramBot, context: TelegramHandlerContext): Promise<void> {
@@ -63,6 +69,7 @@ Use "📋 My Channels" to manage your channels.`
       this.broadcastSessions.set(chatId, {
         userId: user.id,
         message: '',
+        messageType: MessageType.TEXT,
         step: 'waiting_message'
       });
 
@@ -118,9 +125,12 @@ ${channelList}
         return;
       }
 
-      // Store the message
-      session.message = msg.text || '[Media message]';
+      // Store the message and detect type
+      session.message = this.extractMessageContent(msg);
       session.messageId = msg.message_id;
+      session.messageType = this.detectMessageType(msg);
+      session.mediaUrls = this.extractMediaUrls(msg);
+      session.mediaTypes = this.extractMediaTypes(msg);
       session.step = 'confirming';
 
       // Get user's active channels for confirmation
@@ -227,22 +237,42 @@ Are you sure you want to broadcast this message?`;
 
       // Send to each channel
       for (const channel of activeChannels) {
+        let dbMessage;
         try {
+          // Create message record in database
+          dbMessage = await this.messageService.createMessage({
+            content: session.message,
+            messageType: session.messageType,
+            platform: Platform.TELEGRAM,
+            userId: session.userId,
+            channelId: channel.id,
+            mediaUrls: session.mediaUrls || [],
+            mediaTypes: session.mediaTypes || [],
+            metadata: {
+              originalMessageId: session.messageId,
+              broadcastSession: true,
+            },
+          });
+
+          let sentMessage;
           if (session.messageId) {
             // Forward the original message
-            await bot.forwardMessage(
+            sentMessage = await bot.forwardMessage(
               parseInt(channel.platformId),
               chatId,
               session.messageId
             );
           } else {
             // Send as text
-            await this.telegramApiService.sendMessage(
+            sentMessage = await this.telegramApiService.sendMessage(
               bot,
               parseInt(channel.platformId),
               session.message
             );
           }
+
+          // Update message record as sent
+          await this.messageService.markMessageAsSent(dbMessage.id, sentMessage.message_id.toString());
 
           successCount++;
           results.push(`✅ ${channel.title}`);
@@ -254,6 +284,11 @@ Are you sure you want to broadcast this message?`;
           failureCount++;
           results.push(`❌ ${channel.title} - ${error.message}`);
           this.logger.warn(`Failed to send to ${channel.title}:`, error.message);
+
+          // Update message record as failed if it was created
+          if (dbMessage) {
+            await this.messageService.markMessageAsFailed(dbMessage.id, error.message);
+          }
         }
       }
 
@@ -292,6 +327,90 @@ ${failureCount > 0 ? '\n💡 Failed channels may have restricted bot permissions
       case 'SUPERGROUP': return '🏢';
       default: return '📱';
     }
+  }
+
+  private getMessageTypeFromTelegramMessage(messageId?: number): MessageType {
+    // Since we don't have access to the original message object here,
+    // we'll default to TEXT. For more accurate typing, you could pass
+    // the original message object to the broadcast session
+    return MessageType.TEXT;
+  }
+
+  private extractMessageContent(msg: TelegramBot.Message): string {
+    if (msg.text) return msg.text;
+    if (msg.caption) return msg.caption;
+    if (msg.photo) return '[Photo]';
+    if (msg.video) return '[Video]';
+    if (msg.document) return '[Document]';
+    if (msg.audio) return '[Audio]';
+    if (msg.voice) return '[Voice]';
+    if (msg.sticker) return '[Sticker]';
+    if (msg.animation) return '[GIF]';
+    if (msg.poll) return '[Poll]';
+    if (msg.location) return '[Location]';
+    return '[Media message]';
+  }
+
+  private detectMessageType(msg: TelegramBot.Message): MessageType {
+    if (msg.photo) return MessageType.PHOTO;
+    if (msg.video) return MessageType.VIDEO;
+    if (msg.document) return MessageType.DOCUMENT;
+    if (msg.audio || msg.voice) return MessageType.AUDIO;
+    if (msg.animation) return MessageType.GIF;
+    if (msg.sticker) return MessageType.STICKER;
+    if (msg.poll) return MessageType.POLL;
+    if (msg.location) return MessageType.LOCATION;
+    return MessageType.TEXT;
+  }
+
+  private extractMediaUrls(msg: TelegramBot.Message): string[] {
+    const urls: string[] = [];
+    
+    if (msg.photo && msg.photo.length > 0) {
+      // Get the highest resolution photo
+      const photo = msg.photo[msg.photo.length - 1];
+      urls.push(photo.file_id);
+    }
+    
+    if (msg.video) {
+      urls.push(msg.video.file_id);
+    }
+    
+    if (msg.document) {
+      urls.push(msg.document.file_id);
+    }
+    
+    if (msg.audio) {
+      urls.push(msg.audio.file_id);
+    }
+    
+    if (msg.voice) {
+      urls.push(msg.voice.file_id);
+    }
+    
+    if (msg.animation) {
+      urls.push(msg.animation.file_id);
+    }
+    
+    if (msg.sticker) {
+      urls.push(msg.sticker.file_id);
+    }
+    
+    return urls;
+  }
+
+  private extractMediaTypes(msg: TelegramBot.Message): string[] {
+    const types: string[] = [];
+    
+    if (msg.photo) types.push('photo');
+    if (msg.video) types.push('video');
+    if (msg.document) types.push('document');
+    if (msg.audio) types.push('audio');
+    if (msg.voice) types.push('voice');
+    if (msg.animation) types.push('animation');
+    if (msg.sticker) types.push('sticker');
+    
+    return types;
   }
 
   // Check if user has an active broadcast session

@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import * as TelegramBot from "node-telegram-bot-api";
 import { UserManagementService } from "../services/user-management.service";
 import { TelegramApiService } from "../services/telegram-api.service";
+import { MessageService } from "../services/message.service";
 import { TelegramHandlerContext } from "../types/telegram.types";
 
 @Injectable()
@@ -11,6 +12,7 @@ export class CommandHandler {
   constructor(
     private userManagementService: UserManagementService,
     private telegramApiService: TelegramApiService,
+    private messageService: MessageService,
   ) {}
 
   async handleStart(bot: TelegramBot, context: TelegramHandlerContext): Promise<void> {
@@ -48,9 +50,7 @@ What you can do:
 • Connect other social platforms (Discord, Twitter, VK)
 • Send messages across all platforms
 • Schedule messages for later
-• Manage your channels and groups
-
-Use /help to see all available commands.`;
+• Manage your channels and groups`;
 
       await this.telegramApiService.sendMessage(bot, chatId, welcomeMessage);
       await this.showMainMenu(bot, chatId);
@@ -63,6 +63,26 @@ Use /help to see all available commands.`;
         "❌ Sorry, there was an error setting up your account. Please try again later.",
       );
     }
+  }
+
+  async showMainMenu(bot: TelegramBot, chatId: number): Promise<void> {
+    const menuMessage = `🎛️ Main Menu
+
+Choose what you'd like to do:`;
+
+    const keyboard = this.telegramApiService.createReplyKeyboard([
+      [{ text: "👤 Profile" }, { text: "📋 My Channels" }],
+      [{ text: "➕ Add Channel" }, { text: "📢 Send Message" }],
+      [{ text: "📜 Message History" }, { text: "📊 Statistics" }]
+    ], {
+      resize_keyboard: true,
+      one_time_keyboard: false,
+      is_persistent: true,
+    });
+
+    await this.telegramApiService.sendMessage(bot, chatId, menuMessage, {
+      reply_markup: keyboard,
+    });
   }
 
   async handleProfile(bot: TelegramBot, context: TelegramHandlerContext): Promise<void> {
@@ -112,19 +132,87 @@ ${platformList || "None"}
     }
   }
 
-  async showMainMenu(bot: TelegramBot, chatId: number): Promise<void> {
-    const menuMessage = `🎛️ Main Menu
+  async handleMessageHistory(bot: TelegramBot, context: TelegramHandlerContext): Promise<void> {
+    const { chatId, telegramUser } = context;
 
-Choose what you'd like to do:`;
+    try {
+      const user = await this.userManagementService.findUserByTelegramId(telegramUser.id.toString());
+      if (!user) {
+        await this.telegramApiService.sendMessage(
+          bot,
+          chatId,
+          "❌ User not found. Please use /start to create an account."
+        );
+        return;
+      }
 
-    const keyboard = this.telegramApiService.createReplyKeyboard([
-      [{ text: "👤 Profile" }, { text: "📋 My Channels" }],
-      [{ text: "➕ Add Channel" }, { text: "📢 Send Message" }],
-      [{ text: "⏰ Schedule Message" }, { text: "📊 Statistics" }]
-    ]);
+      const messages = await this.messageService.getMessagesByUser(user.id, 10);
 
-    await this.telegramApiService.sendMessage(bot, chatId, menuMessage, {
-      reply_markup: keyboard,
-    });
+      if (messages.length === 0) {
+        await this.telegramApiService.sendMessage(
+          bot,
+          chatId,
+          "📭 No messages found.\n\nYou haven't sent any messages yet. Use '📢 Send Message' to broadcast your first message!"
+        );
+        return;
+      }
+
+      const messageList = messages
+        .map((msg, index) => {
+          const status = this.getStatusEmoji(msg.status);
+          const type = this.getMessageTypeEmoji(msg.messageType);
+          const date = msg.sentAt ? msg.sentAt.toLocaleDateString() : msg.createdAt.toLocaleDateString();
+          const content = msg.content.length > 50 ? msg.content.substring(0, 50) + '...' : msg.content;
+          const channelTitle = (msg as any).channel?.title || 'Unknown Channel';
+          
+          return `${index + 1}. ${status} ${type} ${channelTitle}\n   "${content}"\n   📅 ${date}`;
+        })
+        .join('\n\n');
+
+      const historyMessage = `📜 Message History (Last 10)
+
+${messageList}
+
+Legend:
+✅ Sent  ❌ Failed  ⏳ Pending  📤 Scheduled
+
+Use /messages_detailed for more information about specific messages.`;
+
+      await this.telegramApiService.sendMessage(bot, chatId, historyMessage);
+
+    } catch (error) {
+      this.logger.error("Error fetching message history:", error);
+      await this.telegramApiService.sendMessage(
+        bot,
+        chatId,
+        "❌ Error fetching message history. Please try again."
+      );
+    }
+  }
+
+  private getStatusEmoji(status: string): string {
+    switch (status) {
+      case 'SENT': return '✅';
+      case 'FAILED': return '❌';
+      case 'PENDING': return '⏳';
+      case 'SCHEDULED': return '📤';
+      case 'CANCELLED': return '🚫';
+      default: return '❓';
+    }
+  }
+
+  private getMessageTypeEmoji(type: string): string {
+    switch (type) {
+      case 'TEXT': return '💬';
+      case 'PHOTO': return '📷';
+      case 'VIDEO': return '🎥';
+      case 'DOCUMENT': return '📄';
+      case 'AUDIO': return '🎵';
+      case 'GIF': return '🎬';
+      case 'STICKER': return '😀';
+      case 'POLL': return '📊';
+      case 'LOCATION': return '📍';
+      default: return '💬';
+    }
   }
 } 
