@@ -15,9 +15,6 @@ export const Configuration = () => ({
   tg: {
     api_token: process.env.TELEGRAM_API_TOKEN,
   },
-  redis: {
-    url: process.env.REDIS_URL,
-  },
 });
 
 export const ConfigurationValidationSchema = Joi.object({
@@ -29,6 +26,4 @@ export const ConfigurationValidationSchema = Joi.object({
   DATABASE_URL: Joi.string().required(),
 
   TELEGRAM_API_TOKEN: Joi.string().required(),
-
-  REDIS_URL: Joi.string().required(),
 });
