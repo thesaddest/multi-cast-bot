@@ -1,273 +1,180 @@
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { ConfigService } from "../config/config.service";
 import * as TelegramBot from "node-telegram-bot-api";
-import { DbService } from "../db/db.service";
-import { Platform, ChannelType } from "@prisma/client";
 
-  @Injectable()
-  export class TelegramService implements OnModuleInit {
-    private bot: TelegramBot;
-    private readonly logger = new Logger(TelegramService.name);
+// Handlers
+import { CommandHandler } from "./handlers/command.handler";
+import { ChannelHandler } from "./handlers/channel.handler";
+import { CallbackHandler } from "./handlers/callback.handler";
 
-    constructor(
-      private configService: ConfigService,
-      private dbService: DbService,
-    ) {}
+// Services
+import { TelegramApiService } from "./services/telegram-api.service";
 
-    onModuleInit() {
-      const token = this.configService.get<string>("tg.api_token");
-      if (!token) {
-        this.logger.error("Telegram API token not found");
-        return;
-      }
+// Types
+import { TelegramHandlerContext } from "./types/telegram.types";
 
-      this.bot = new TelegramBot(token, { polling: true });
-      this.setupBotHandlers();
-      this.logger.log("Telegram bot initialized");
+@Injectable()
+export class TelegramService implements OnModuleInit {
+  private bot: TelegramBot;
+  private readonly logger = new Logger(TelegramService.name);
+
+  constructor(
+    private configService: ConfigService,
+    private commandHandler: CommandHandler,
+    private channelHandler: ChannelHandler,
+    private callbackHandler: CallbackHandler,
+    private telegramApiService: TelegramApiService,
+  ) {}
+
+  onModuleInit() {
+    const token = this.configService.get<string>("tg.api_token");
+    if (!token) {
+      this.logger.error("Telegram API token not found");
+      return;
     }
 
-    private setupBotHandlers() {
-      // Start command - Initialize user
-      this.bot.onText(/\/start/, this.handleStart.bind(this));
+    this.bot = new TelegramBot(token, { polling: true });
+    this.setupBotHandlers();
+    this.logger.log("Telegram bot initialized");
+  }
 
-      // Profile command - Show user info
-      this.bot.onText(/\/profile/, (msg) => {
-        if (msg.from) {
-          this.handleProfile(msg.chat.id, msg.from);
-        }
-      });
+  private setupBotHandlers() {
+    // Command handlers
+    this.bot.onText(/\/start/, this.handleCommand.bind(this, 'start'));
+    this.bot.onText(/\/profile/, this.handleCommand.bind(this, 'profile'));
+    this.bot.onText(/\/channels/, this.handleCommand.bind(this, 'channels'));
+    this.bot.onText(/\/add_channel/, this.handleCommand.bind(this, 'add_channel'));
+    this.bot.onText(/\/main_menu/, this.handleCommand.bind(this, 'main_menu'));
 
-      this.bot.onText(/^👤 Profile$/, (msg) => {
-        if (msg.from) {
-          this.handleProfile(msg.chat.id, msg.from);
-        }
-      });
+    // Button text handlers
+    this.bot.onText(/^👤 Profile$/, this.handleCommand.bind(this, 'profile'));
+    this.bot.onText(/^📋 My Channels$/, this.handleCommand.bind(this, 'channels'));
+    this.bot.onText(/^➕ Add Channel$/, this.handleCommand.bind(this, 'add_channel'));
 
-      // Main menu command
-      this.bot.onText(/\/main_menu/, (msg) => {
-        if (msg.chat.id) {
-          this.showMainMenu(msg.chat.id);
-        }
-      });
+    // Channel username input handler
+    this.bot.onText(/^@([a-zA-Z0-9_]+)$/, this.handleChannelUsernameInput.bind(this));
 
-      this.bot.on("callback_query", this.handleCallbackQuery.bind(this));
+    // Auto-detect when bot is added to channels/groups
+    this.bot.on("my_chat_member", this.handleChatMemberUpdate.bind(this));
+    this.bot.on("new_chat_members", this.handleNewChatMembers.bind(this));
 
-      // Error handling
-      this.bot.on("error", (error) => {
-        this.logger.error("Telegram bot error:", error);
-      });
+    // Callback query handler
+    this.bot.on("callback_query", this.handleCallbackQuery.bind(this));
 
-      this.logger.log("Telegram bot handlers set up");
-    }
+    // Error handling
+    this.bot.on("error", (error) => {
+      this.logger.error("Telegram bot error:", error);
+    });
 
-    private async handleStart(msg: TelegramBot.Message) {
-      const chatId = msg.chat.id;
-      const telegramUser = msg.from;
+    this.logger.log("Telegram bot handlers set up");
+  }
 
-      if (!telegramUser) {
-        await this.bot.sendMessage(chatId, "❌ Unable to get user information");
-        return;
+  private async handleCommand(command: string, msg: TelegramBot.Message): Promise<void> {
+    if (!msg.from) return;
+
+    const context: TelegramHandlerContext = {
+      chatId: msg.chat.id,
+      telegramUser: msg.from,
+      message: msg,
+    };
+
+    try {
+      switch (command) {
+        case 'start':
+          await this.commandHandler.handleStart(this.bot, context);
+          break;
+        case 'profile':
+          await this.commandHandler.handleProfile(this.bot, context);
+          break;
+        case 'channels':
+          await this.channelHandler.handleChannelsList(this.bot, context);
+          break;
+        case 'add_channel':
+          await this.channelHandler.handleAddChannelCommand(this.bot, context);
+          break;
+        case 'main_menu':
+          await this.commandHandler.showMainMenu(this.bot, msg.chat.id);
+          break;
+        default:
+          this.logger.warn(`Unknown command: ${command}`);
       }
-
-      try {
-        // Check if user already exists
-        let user = await this.dbService.user.findFirst({
-          where: {
-            accounts: {
-              some: {
-                platform: Platform.TELEGRAM,
-                platformId: telegramUser.id.toString(),
-              },
-            },
-          },
-          include: {
-            accounts: true,
-          },
-        });
-
-        if (user) {
-          await this.bot.sendMessage(
-            chatId,
-            `🎉 Welcome back, ${telegramUser.first_name}!\n\nYou're already registered in our system.`,
-          );
-          await this.showMainMenu(chatId);
-          return;
-        }
-
-        // Create new user with Telegram account
-        user = await this.dbService.user.create({
-          data: {
-            username: telegramUser.username,
-            primaryPlatform: Platform.TELEGRAM,
-            accounts: {
-              create: {
-                platform: Platform.TELEGRAM,
-                platformId: telegramUser.id.toString(),
-                username: telegramUser.username,
-                displayName:
-                  `${telegramUser.first_name} ${telegramUser.last_name || ""}`.trim(),
-                firstName: telegramUser.first_name,
-                lastName: telegramUser.last_name,
-              },
-            },
-          },
-          include: {
-            accounts: true,
-          },
-        });
-
-        const welcomeMessage = `
-  🚀 Welcome to Multi-Platform Bot, ${telegramUser.first_name}!
-
-  ✅ Your account has been created successfully!
-  🆔 User ID: ${user.id}
-  📱 Connected Platform: Telegram
-
-  What you can do:
-  • Connect other social platforms (Discord, Twitter, VK)
-  • Send messages across all platforms
-  • Schedule messages for later
-  • Manage your channels and groups
-
-  Use /help to see all available commands.
-        `;
-
-        await this.bot.sendMessage(chatId, welcomeMessage);
-        await this.showMainMenu(chatId);
-
-        this.logger.log(
-          `New user created: ${user.id} (Telegram: ${telegramUser.id})`,
-        );
-      } catch (error) {
-        this.logger.error("Error creating user:", error);
-        await this.bot.sendMessage(
-          chatId,
-          "❌ Sorry, there was an error setting up your account. Please try again later.",
-        );
-      }
-    }
-    private async showMainMenu(chatId: number) {
-      const menuMessage = `
-  🎛️ Main Menu
-
-  Choose what you'd like to do:
-    `;
-
-      await this.bot.sendMessage(chatId, menuMessage, {
-        reply_markup: {
-          keyboard: [[{ text: "👤 Profile" }]],
-          resize_keyboard: true, // Makes keyboard compact
-          one_time_keyboard: false, // Keyboard stays visible
-          is_persistent: true, // Keyboard persists across app restarts
-        },
-      });
-    }
-
-    private async handleProfile(chatId: number, telegramUser: TelegramBot.User) {
-      try {
-        const user = await this.dbService.user.findFirst({
-          where: {
-            accounts: {
-              some: {
-                platform: Platform.TELEGRAM,
-                platformId: telegramUser.id.toString(),
-              },
-            },
-          },
-          include: {
-            accounts: {
-              where: { isActive: true },
-            },
-            channels: {
-              where: { isActive: true },
-            },
-            _count: {
-              select: {
-                messages: true,
-                messageQueue: true,
-              },
-            },
-          },
-        });
-
-        if (!user) {
-          await this.bot.sendMessage(
-            chatId,
-            "❌ User not found. Please use /start to create an account.",
-          );
-          return;
-        }
-
-        const platformList = user.accounts
-          .map(
-            (account) =>
-              `• ${account.platform}: @${account.username || account.displayName}`,
-          )
-          .join("\n");
-
-        const profileMessage = `
-  👤 Your Profile
-
-  🆔 User ID: ${user.id}
-  📧 Email: ${user.email || "Not set"}
-  👤 Username: ${user.username || "Not set"}
-  📅 Member since: ${user.createdAt.toDateString()}
-
-  🔗 Connected Platforms (${user.accounts.length}):
-  ${platformList || "None"}
-
-  📺 Active Channels: ${user.channels.length}
-  📤 Messages Sent: ${user._count.messages}
-  ⏰ Scheduled Messages: ${user._count.messageQueue}
-      `;
-
-        await this.bot.sendMessage(chatId, profileMessage);
-      } catch (error) {
-        this.logger.error("Error fetching profile:", error);
-        await this.bot.sendMessage(
-          chatId,
-          "❌ Error fetching your profile. Please try again.",
-        );
-      }
-    }
-
-    private async handleCallbackQuery(callbackQuery: TelegramBot.CallbackQuery) {
-      const chatId = callbackQuery.message?.chat.id;
-      const data = callbackQuery.data;
-      const telegramUser = callbackQuery.from;
-
-      if (!chatId || !data) {
-        this.logger.error("Missing chatId or data, returning");
-        return;
-      }
-
-      this.logger.debug(
-        `Received callback query: ${data} from user: ${telegramUser.id}`,
+    } catch (error) {
+      this.logger.error(`Error handling command ${command}:`, error);
+      await this.telegramApiService.sendMessage(
+        this.bot,
+        msg.chat.id,
+        "❌ An error occurred. Please try again."
       );
+    }
+  }
 
-      // Answer the callback query to remove loading state
-      await this.bot.answerCallbackQuery(callbackQuery.id);
+  private async handleChannelUsernameInput(msg: TelegramBot.Message, match: RegExpExecArray): Promise<void> {
+    if (!msg.from || !match) return;
 
-      try {
-        switch (data) {
-          case "profile":
-            await this.handleProfile(chatId, telegramUser);
-            break;
+    const context: TelegramHandlerContext = {
+      chatId: msg.chat.id,
+      telegramUser: msg.from,
+      message: msg,
+    };
 
-          case "main_menu":
-            await this.showMainMenu(chatId);
-            break;
+    try {
+      await this.channelHandler.handleChannelUsernameInput(this.bot, context, match[1]);
+    } catch (error) {
+      this.logger.error("Error handling channel username input:", error);
+      await this.telegramApiService.sendMessage(
+        this.bot,
+        msg.chat.id,
+        "❌ An error occurred while processing the channel username."
+      );
+    }
+  }
 
-          default:
-            this.logger.error("Unknown callback data:", data);
-            await this.bot.sendMessage(chatId, "❌ Unknown action");
-        }
-      } catch (error) {
-        this.logger.error("Error handling callback query:", error);
-        await this.bot.sendMessage(
-          chatId,
-          "❌ An error occurred. Please try again.",
+  private async handleChatMemberUpdate(update: TelegramBot.ChatMemberUpdated): Promise<void> {
+    try {
+      const chat = update.chat;
+      const newMember = update.new_chat_member;
+      const oldMember = update.old_chat_member;
+
+      // Check if our bot was added as admin
+      if (
+        newMember.user.id === (await this.bot.getMe()).id &&
+        newMember.status === "administrator" &&
+        oldMember.status !== "administrator"
+      ) {
+        await this.channelHandler.handleBotAddedToChannel(this.bot, chat, update.from);
+      }
+    } catch (error) {
+      this.logger.error("Error handling chat member update:", error);
+    }
+  }
+
+  private async handleNewChatMembers(msg: TelegramBot.Message): Promise<void> {
+    try {
+      if (!msg.new_chat_members || !msg.from) return;
+
+      const botInfo = await this.bot.getMe();
+      const botAdded = msg.new_chat_members.some(member => member.id === botInfo.id);
+
+      if (botAdded) {
+        await this.channelHandler.handleBotAddedToChannel(this.bot, msg.chat, msg.from);
+      }
+    } catch (error) {
+      this.logger.error("Error handling new chat members:", error);
+    }
+  }
+
+  private async handleCallbackQuery(callbackQuery: TelegramBot.CallbackQuery): Promise<void> {
+    try {
+      await this.callbackHandler.handleCallbackQuery(this.bot, callbackQuery);
+    } catch (error) {
+      this.logger.error("Error handling callback query:", error);
+      if (callbackQuery.message?.chat.id) {
+        await this.telegramApiService.sendMessage(
+          this.bot,
+          callbackQuery.message.chat.id,
+          "❌ An error occurred. Please try again."
         );
       }
     }
   }
+} 
