@@ -43,9 +43,11 @@ export class BroadcastHandler {
     const { chatId, telegramUser } = context;
 
     try {
-      const userLanguage = await this.i18nService.getUserLanguage(telegramUser.id.toString());
+      const userLanguage = await this.i18nService.getUserLanguage(
+        telegramUser.id.toString(),
+      );
       const messages = this.i18nService.getMessages(userLanguage);
-      
+
       const user = await this.userManagementService.findUserByTelegramId(
         telegramUser.id.toString(),
       );
@@ -146,9 +148,11 @@ ${messages.messages.broadcast.tipCancel}`,
       );
     } catch (error) {
       this.logger.error("Error starting broadcast:", error);
-      const userLanguage = await this.i18nService.getUserLanguage(telegramUser.id.toString());
+      const userLanguage = await this.i18nService.getUserLanguage(
+        telegramUser.id.toString(),
+      );
       const messages = this.i18nService.getMessages(userLanguage);
-      
+
       await this.telegramApiService.sendMessage(
         bot,
         chatId,
@@ -172,9 +176,11 @@ ${messages.messages.broadcast.tipCancel}`,
       // Handle cancel command
       if (msg.text === "/cancel") {
         this.broadcastSessions.delete(chatId);
-        const userLanguage = await this.i18nService.getUserLanguage(msg.from?.id.toString() || '');
+        const userLanguage = await this.i18nService.getUserLanguage(
+          msg.from?.id.toString() || "",
+        );
         const messages = this.i18nService.getMessages(userLanguage);
-        
+
         await this.telegramApiService.sendMessage(
           bot,
           chatId,
@@ -202,9 +208,11 @@ ${messages.messages.broadcast.tipCancel}`,
       await this.showBroadcastConfirmation(bot, session, chatId);
     } catch (error) {
       this.logger.error("Error handling broadcast message:", error);
-      const userLanguage = await this.i18nService.getUserLanguage(msg.from?.id.toString() || '');
+      const userLanguage = await this.i18nService.getUserLanguage(
+        msg.from?.id.toString() || "",
+      );
       const messages = this.i18nService.getMessages(userLanguage);
-      
+
       await this.telegramApiService.sendMessage(
         bot,
         chatId,
@@ -222,9 +230,11 @@ ${messages.messages.broadcast.tipCancel}`,
 
     const session = this.broadcastSessions.get(chatId);
     if (!session || session.step !== "confirming") {
-      const userLanguage = await this.i18nService.getUserLanguage(callbackQuery.from.id.toString());
+      const userLanguage = await this.i18nService.getUserLanguage(
+        callbackQuery.from.id.toString(),
+      );
       const messages = this.i18nService.getMessages(userLanguage);
-      
+
       await bot.answerCallbackQuery(callbackQuery.id, {
         text: messages.messages.broadcast.sessionExpired,
       });
@@ -234,14 +244,21 @@ ${messages.messages.broadcast.tipCancel}`,
     try {
       if (callbackQuery.data === "broadcast_cancel") {
         this.broadcastSessions.delete(chatId);
-        const userLanguage = await this.i18nService.getUserLanguage(callbackQuery.from.id.toString());
+        const userLanguage = await this.i18nService.getUserLanguage(
+          callbackQuery.from.id.toString(),
+        );
         const messages = this.i18nService.getMessages(userLanguage);
-        
-        await bot.editMessageText(messages.messages.broadcast.broadcastCancelled, {
-          chat_id: chatId,
-          message_id: callbackQuery.message?.message_id,
+
+        await bot.editMessageText(
+          messages.messages.broadcast.broadcastCancelled,
+          {
+            chat_id: chatId,
+            message_id: callbackQuery.message?.message_id,
+          },
+        );
+        await bot.answerCallbackQuery(callbackQuery.id, {
+          text: messages.messages.broadcast.cancelled,
         });
-        await bot.answerCallbackQuery(callbackQuery.id, { text: messages.messages.broadcast.cancelled });
         return;
       }
 
@@ -250,7 +267,7 @@ ${messages.messages.broadcast.tipCancel}`,
 
         const telegramUserId = callbackQuery.from.id.toString();
         const messages = await this.i18nService.getUserMessages(telegramUserId);
-        
+
         await bot.editMessageText(
           `${messages.messages.broadcast.inProgress}\n\n${messages.messages.broadcast.inProgressDescription}`,
           {
@@ -349,9 +366,12 @@ ${messages.messages.broadcast.tipCancel}`,
       }
 
       // Get user's language for the summary
-      const userInfo = await this.userManagementService.findUserTelegramInfoById(session.userId);
-      
-      const messages = userInfo?.telegramId 
+      const userInfo =
+        await this.userManagementService.findUserTelegramInfoById(
+          session.userId,
+        );
+
+      const messages = userInfo?.telegramId
         ? await this.i18nService.getUserMessages(userInfo.telegramId)
         : this.i18nService.getMessages("ENGLISH" as any);
 
@@ -378,13 +398,16 @@ ${failureCount > 0 ? `\n${messages.messages.broadcast.failedChannelsNote}` : ""}
       this.broadcastSessions.delete(chatId);
     } catch (error) {
       this.logger.error("Error executing broadcast:", error);
-      
+
       // Get user's language for error message
-      const userInfo = await this.userManagementService.findUserTelegramInfoById(session.userId);
-      const messages = userInfo?.telegramId 
+      const userInfo =
+        await this.userManagementService.findUserTelegramInfoById(
+          session.userId,
+        );
+      const messages = userInfo?.telegramId
         ? await this.i18nService.getUserMessages(userInfo.telegramId)
         : this.i18nService.getMessages("ENGLISH" as any);
-      
+
       await this.telegramApiService.sendMessage(
         bot,
         chatId,
@@ -463,10 +486,14 @@ ${failureCount > 0 ? `\n${messages.messages.broadcast.failedChannelsNote}` : ""}
     chatId: number,
   ): Promise<void> {
     // Get user language for confirmation message
-    const userInfo = await this.userManagementService.findUserTelegramInfoById(session.userId);
+    const userInfo = await this.userManagementService.findUserTelegramInfoById(
+      session.userId,
+    );
     if (!userInfo) return;
-    
-    const userLanguage = await this.i18nService.getUserLanguage(userInfo.telegramId);
+
+    const userLanguage = await this.i18nService.getUserLanguage(
+      userInfo.telegramId,
+    );
     const messages = this.i18nService.getMessages(userLanguage);
     // Get user's active channels for confirmation
     const channels = await this.channelManagementService.getUserChannels(
@@ -510,8 +537,14 @@ ${messages.messages.messages.confirmBroadcastQuestion}`;
     const keyboard: TelegramBot.InlineKeyboardMarkup = {
       inline_keyboard: [
         [
-          { text: messages.messages.broadcast.sendToAll, callback_data: "broadcast_confirm" },
-          { text: messages.messages.general.cancelled, callback_data: "broadcast_cancel" },
+          {
+            text: messages.messages.broadcast.sendToAll,
+            callback_data: "broadcast_confirm",
+          },
+          {
+            text: messages.messages.general.cancelled,
+            callback_data: "broadcast_cancel",
+          },
         ],
       ],
     };

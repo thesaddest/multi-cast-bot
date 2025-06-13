@@ -57,11 +57,13 @@ export class CallbackHandler {
       await this.routeCallback(bot, context, data);
     } catch (error) {
       this.logger.error("Error handling callback query:", error);
-      
+
       // Get user language for error message
-      const userLanguage = await this.i18nService.getUserLanguage(telegramUser.id.toString());
+      const userLanguage = await this.i18nService.getUserLanguage(
+        telegramUser.id.toString(),
+      );
       const messages = this.i18nService.getMessages(userLanguage);
-      
+
       await this.telegramApiService.sendMessage(
         bot,
         chatId,
@@ -109,7 +111,11 @@ export class CallbackHandler {
         break;
 
       case "back_to_menu":
-        await this.commandHandler.showMainMenu(bot, context.chatId, context.telegramUser.id.toString());
+        await this.commandHandler.showMainMenu(
+          bot,
+          context.chatId,
+          context.telegramUser.id.toString(),
+        );
         break;
 
       default:
@@ -151,10 +157,12 @@ export class CallbackHandler {
       await this.handleConfirmRemoveChannel(bot, context, channelId);
     } else {
       this.logger.error("Unknown callback data:", data);
-      
-      const userLanguage = await this.i18nService.getUserLanguage(context.telegramUser.id.toString());
+
+      const userLanguage = await this.i18nService.getUserLanguage(
+        context.telegramUser.id.toString(),
+      );
       const messages = this.i18nService.getMessages(userLanguage);
-      
+
       await this.telegramApiService.sendMessage(
         bot,
         context.chatId,
@@ -171,9 +179,11 @@ export class CallbackHandler {
     const { chatId, telegramUser } = context;
 
     try {
-      const userLanguage = await this.i18nService.getUserLanguage(telegramUser.id.toString());
+      const userLanguage = await this.i18nService.getUserLanguage(
+        telegramUser.id.toString(),
+      );
       const messages = this.i18nService.getMessages(userLanguage);
-      
+
       const user = await this.userManagementService.findUserByTelegramId(
         telegramUser.id.toString(),
       );
@@ -212,12 +222,14 @@ ${channel.isActive ? messages.messages.channelManagement.active : messages.messa
       const keyboard = [
         [
           {
-            text: channel.isActive ? messages.messages.channelManagement.deactivate : messages.messages.channelManagement.activate,
+            text: channel.isActive
+              ? messages.messages.channelManagement.deactivate
+              : messages.messages.channelManagement.activate,
             callback_data: `toggle_channel_${channelId}`,
           },
-          { 
-            text: messages.messages.channelManagement.remove, 
-            callback_data: `remove_channel_${channelId}` 
+          {
+            text: messages.messages.channelManagement.remove,
+            callback_data: `remove_channel_${channelId}`,
           },
         ],
         [
@@ -226,10 +238,12 @@ ${channel.isActive ? messages.messages.channelManagement.active : messages.messa
             callback_data: `refresh_channel_${channelId}`,
           },
         ],
-        [{ 
-          text: messages.messages.channelManagement.backToChannels, 
-          callback_data: "channels_list" 
-        }],
+        [
+          {
+            text: messages.messages.channelManagement.backToChannels,
+            callback_data: "channels_list",
+          },
+        ],
       ];
 
       await this.telegramApiService.sendMessage(
@@ -242,9 +256,11 @@ ${channel.isActive ? messages.messages.channelManagement.active : messages.messa
       );
     } catch (error) {
       this.logger.error("Error in channel management:", error);
-      const userLanguage = await this.i18nService.getUserLanguage(telegramUser.id.toString());
+      const userLanguage = await this.i18nService.getUserLanguage(
+        telegramUser.id.toString(),
+      );
       const messages = this.i18nService.getMessages(userLanguage);
-      
+
       await this.telegramApiService.sendMessage(
         bot,
         chatId,
@@ -261,9 +277,11 @@ ${channel.isActive ? messages.messages.channelManagement.active : messages.messa
     const { chatId, telegramUser } = context;
 
     try {
-      const userLanguage = await this.i18nService.getUserLanguage(telegramUser.id.toString());
+      const userLanguage = await this.i18nService.getUserLanguage(
+        telegramUser.id.toString(),
+      );
       const messages = this.i18nService.getMessages(userLanguage);
-      
+
       const user = await this.userManagementService.findUserByTelegramId(
         telegramUser.id.toString(),
       );
@@ -297,10 +315,12 @@ ${channel.isActive ? messages.messages.channelManagement.active : messages.messa
         : messages.messages.channelManagement.deactivated(channel.title);
 
       const keyboard = [
-        [{ 
-          text: messages.messages.channelManagement.backToChannels, 
-          callback_data: "channels_list" 
-        }],
+        [
+          {
+            text: messages.messages.channelManagement.backToChannels,
+            callback_data: "channels_list",
+          },
+        ],
       ];
 
       await this.telegramApiService.sendMessage(bot, chatId, statusMessage, {
@@ -308,9 +328,11 @@ ${channel.isActive ? messages.messages.channelManagement.active : messages.messa
       });
     } catch (error) {
       this.logger.error("Error toggling channel:", error);
-      const userLanguage = await this.i18nService.getUserLanguage(telegramUser.id.toString());
+      const userLanguage = await this.i18nService.getUserLanguage(
+        telegramUser.id.toString(),
+      );
       const messages = this.i18nService.getMessages(userLanguage);
-      
+
       await this.telegramApiService.sendMessage(
         bot,
         chatId,
@@ -327,9 +349,11 @@ ${channel.isActive ? messages.messages.channelManagement.active : messages.messa
     const { chatId, telegramUser } = context;
 
     try {
-      const userLanguage = await this.i18nService.getUserLanguage(telegramUser.id.toString());
+      const userLanguage = await this.i18nService.getUserLanguage(
+        telegramUser.id.toString(),
+      );
       const messages = this.i18nService.getMessages(userLanguage);
-      
+
       const user = await this.userManagementService.findUserByTelegramId(
         telegramUser.id.toString(),
       );
@@ -371,15 +395,17 @@ ${messages.messages.channelManagement.removeWarning}`;
             text: messages.messages.channelManagement.yesRemove,
             callback_data: `confirm_remove_${channelId}`,
           },
-          { 
-            text: messages.messages.channelManagement.cancel, 
-            callback_data: `manage_channel_${channelId}` 
+          {
+            text: messages.messages.channelManagement.cancel,
+            callback_data: `manage_channel_${channelId}`,
           },
         ],
-        [{ 
-          text: messages.messages.channelManagement.backToChannels, 
-          callback_data: "channels_list" 
-        }],
+        [
+          {
+            text: messages.messages.channelManagement.backToChannels,
+            callback_data: "channels_list",
+          },
+        ],
       ];
 
       await this.telegramApiService.sendMessage(bot, chatId, confirmMessage, {
@@ -387,9 +413,11 @@ ${messages.messages.channelManagement.removeWarning}`;
       });
     } catch (error) {
       this.logger.error("Error in remove channel:", error);
-      const userLanguage = await this.i18nService.getUserLanguage(telegramUser.id.toString());
+      const userLanguage = await this.i18nService.getUserLanguage(
+        telegramUser.id.toString(),
+      );
       const messages = this.i18nService.getMessages(userLanguage);
-      
+
       await this.telegramApiService.sendMessage(
         bot,
         chatId,
@@ -406,9 +434,11 @@ ${messages.messages.channelManagement.removeWarning}`;
     const { chatId, telegramUser } = context;
 
     try {
-      const userLanguage = await this.i18nService.getUserLanguage(telegramUser.id.toString());
+      const userLanguage = await this.i18nService.getUserLanguage(
+        telegramUser.id.toString(),
+      );
       const messages = this.i18nService.getMessages(userLanguage);
-      
+
       const user = await this.userManagementService.findUserByTelegramId(
         telegramUser.id.toString(),
       );
@@ -452,9 +482,11 @@ You can add it back anytime by adding the bot to the channel again or using the 
       });
     } catch (error) {
       this.logger.error("Error confirming channel removal:", error);
-      const userLanguage = await this.i18nService.getUserLanguage(telegramUser.id.toString());
+      const userLanguage = await this.i18nService.getUserLanguage(
+        telegramUser.id.toString(),
+      );
       const messages = this.i18nService.getMessages(userLanguage);
-      
+
       await this.telegramApiService.sendMessage(
         bot,
         chatId,
@@ -471,9 +503,11 @@ You can add it back anytime by adding the bot to the channel again or using the 
     const { chatId, telegramUser } = context;
 
     try {
-      const userLanguage = await this.i18nService.getUserLanguage(telegramUser.id.toString());
+      const userLanguage = await this.i18nService.getUserLanguage(
+        telegramUser.id.toString(),
+      );
       const messages = this.i18nService.getMessages(userLanguage);
-      
+
       const user = await this.userManagementService.findUserByTelegramId(
         telegramUser.id.toString(),
       );
@@ -569,7 +603,10 @@ ${updatedChannel.isActive ? messages.messages.channelManagement.active : message
           reply_markup: this.telegramApiService.createInlineKeyboard(keyboard),
         });
       } catch (telegramError) {
-        this.logger.error("Error fetching channel info from Telegram:", telegramError);
+        this.logger.error(
+          "Error fetching channel info from Telegram:",
+          telegramError,
+        );
         await this.telegramApiService.sendMessage(
           bot,
           chatId,
@@ -578,9 +615,11 @@ ${updatedChannel.isActive ? messages.messages.channelManagement.active : message
       }
     } catch (error) {
       this.logger.error("Error refreshing channel:", error);
-      const userLanguage = await this.i18nService.getUserLanguage(telegramUser.id.toString());
+      const userLanguage = await this.i18nService.getUserLanguage(
+        telegramUser.id.toString(),
+      );
       const messages = this.i18nService.getMessages(userLanguage);
-      
+
       await this.telegramApiService.sendMessage(
         bot,
         chatId,
@@ -596,9 +635,11 @@ ${updatedChannel.isActive ? messages.messages.channelManagement.active : message
     const { chatId, telegramUser } = context;
 
     try {
-      const userLanguage = await this.i18nService.getUserLanguage(telegramUser.id.toString());
+      const userLanguage = await this.i18nService.getUserLanguage(
+        telegramUser.id.toString(),
+      );
       const messages = this.i18nService.getMessages(userLanguage);
-      
+
       const user = await this.userManagementService.findUserByTelegramId(
         telegramUser.id.toString(),
       );
@@ -612,9 +653,10 @@ ${updatedChannel.isActive ? messages.messages.channelManagement.active : message
         return;
       }
 
-      const subscription = await this.subscriptionService.getUserSubscriptionInfo(user.id);
+      const subscription =
+        await this.subscriptionService.getUserSubscriptionInfo(user.id);
 
-      if (subscription && subscription.subscriptionStatus === 'ACTIVE') {
+      if (subscription && subscription.subscriptionStatus === "ACTIVE") {
         await this.telegramApiService.sendMessage(
           bot,
           chatId,
@@ -632,11 +674,26 @@ ${messages.messages.subscription.unlimitedMessagesAcross}
 ${messages.messages.subscription.priorityCustomerSupport}
 ${messages.messages.subscription.advancedSchedulingFeatures}`;
 
+      // Create dynamic checkout session
+      const baseUrl = process.env.BASE_URL || "http://localhost:3000";
+      const successUrl = `${baseUrl}/stripe/success?session_id={CHECKOUT_SESSION_ID}&user_id=${user.id}`;
+      const cancelUrl = `${baseUrl}/stripe/cancel`;
+
+      // Use user's email or a placeholder - you might want to collect this from the user
+      const userEmail = user.email || `${telegramUser.id}@telegram.user`;
+
+      const checkoutUrl = await this.subscriptionService.createCheckoutSession(
+        user.id,
+        userEmail,
+        successUrl,
+        cancelUrl,
+      );
+
       const keyboard = [
         [
           {
             text: messages.messages.subscription.payWithStripe,
-            url: "https://buy.stripe.com/test_3cs6qH2WG5bHbY4289",
+            url: checkoutUrl,
           },
         ],
         [
@@ -652,9 +709,11 @@ ${messages.messages.subscription.advancedSchedulingFeatures}`;
       });
     } catch (error) {
       this.logger.error("Error in upgrade premium:", error);
-      const userLanguage = await this.i18nService.getUserLanguage(telegramUser.id.toString());
+      const userLanguage = await this.i18nService.getUserLanguage(
+        telegramUser.id.toString(),
+      );
       const messages = this.i18nService.getMessages(userLanguage);
-      
+
       await this.telegramApiService.sendMessage(
         bot,
         chatId,
@@ -683,9 +742,11 @@ ${messages.messages.subscription.advancedSchedulingFeatures}`;
     const { chatId, telegramUser } = context;
 
     try {
-      const userLanguage = await this.i18nService.getUserLanguage(telegramUser.id.toString());
+      const userLanguage = await this.i18nService.getUserLanguage(
+        telegramUser.id.toString(),
+      );
       const messages = this.i18nService.getMessages(userLanguage);
-      
+
       const user = await this.userManagementService.findUserByTelegramId(
         telegramUser.id.toString(),
       );
@@ -699,9 +760,10 @@ ${messages.messages.subscription.advancedSchedulingFeatures}`;
         return;
       }
 
-      const subscription = await this.subscriptionService.getUserSubscriptionInfo(user.id);
+      const subscription =
+        await this.subscriptionService.getUserSubscriptionInfo(user.id);
 
-      if (!subscription || subscription.subscriptionStatus !== 'ACTIVE') {
+      if (!subscription || subscription.subscriptionStatus !== "ACTIVE") {
         await this.telegramApiService.sendMessage(
           bot,
           chatId,
@@ -734,9 +796,11 @@ ${messages.messages.subscription.freeMessages}`;
       });
     } catch (error) {
       this.logger.error("Error cancelling subscription:", error);
-      const userLanguage = await this.i18nService.getUserLanguage(telegramUser.id.toString());
+      const userLanguage = await this.i18nService.getUserLanguage(
+        telegramUser.id.toString(),
+      );
       const messages = this.i18nService.getMessages(userLanguage);
-      
+
       await this.telegramApiService.sendMessage(
         bot,
         chatId,
@@ -752,7 +816,9 @@ ${messages.messages.subscription.freeMessages}`;
     const { chatId, telegramUser } = context;
 
     try {
-      const userLanguage = await this.i18nService.getUserLanguage(telegramUser.id.toString());
+      const userLanguage = await this.i18nService.getUserLanguage(
+        telegramUser.id.toString(),
+      );
       const messages = this.i18nService.getMessages(userLanguage);
 
       const keepMessage = messages.messages.subscription.keepChoice;
@@ -771,9 +837,11 @@ ${messages.messages.subscription.freeMessages}`;
       });
     } catch (error) {
       this.logger.error("Error in keep subscription:", error);
-      const userLanguage = await this.i18nService.getUserLanguage(telegramUser.id.toString());
+      const userLanguage = await this.i18nService.getUserLanguage(
+        telegramUser.id.toString(),
+      );
       const messages = this.i18nService.getMessages(userLanguage);
-      
+
       await this.telegramApiService.sendMessage(
         bot,
         chatId,

@@ -28,7 +28,7 @@ export class TelegramService implements OnModuleInit {
     private broadcastHandler: BroadcastHandler,
     private telegramApiService: TelegramApiService,
     private dbService: DbService,
-  ) { }
+  ) {}
 
   onModuleInit() {
     const token = this.configService.get<string>("tg.api_token");
@@ -77,10 +77,7 @@ export class TelegramService implements OnModuleInit {
       /^📜 Message History$/,
       this.handleCommand.bind(this, "messages"),
     );
-    this.bot.onText(
-      /^🌐 Language$/,
-      this.handleCommand.bind(this, "language"),
-    );
+    this.bot.onText(/^🌐 Language$/, this.handleCommand.bind(this, "language"));
 
     // Button text handlers (Russian)
     this.bot.onText(/^👤 Профиль$/, this.handleCommand.bind(this, "profile"));
@@ -100,10 +97,7 @@ export class TelegramService implements OnModuleInit {
       /^📜 История сообщений$/,
       this.handleCommand.bind(this, "messages"),
     );
-    this.bot.onText(
-      /^🌐 Язык$/,
-      this.handleCommand.bind(this, "language"),
-    );
+    this.bot.onText(/^🌐 Язык$/, this.handleCommand.bind(this, "language"));
 
     // Channel username input handler
     this.bot.onText(
@@ -162,7 +156,11 @@ export class TelegramService implements OnModuleInit {
           await this.commandHandler.handleMessageHistory(this.bot, context);
           break;
         case "menu":
-          await this.commandHandler.showMainMenu(this.bot, context.chatId, context.telegramUser.id.toString());
+          await this.commandHandler.showMainMenu(
+            this.bot,
+            context.chatId,
+            context.telegramUser.id.toString(),
+          );
           break;
         case "language":
           await this.commandHandler.handleLanguageSettings(this.bot, context);

@@ -29,7 +29,9 @@ export class ChannelHandler {
     const { chatId, telegramUser } = context;
 
     try {
-      const messages = await this.i18nService.getUserMessages(telegramUser.id.toString());
+      const messages = await this.i18nService.getUserMessages(
+        telegramUser.id.toString(),
+      );
       const user = await this.userManagementService.findUserByTelegramId(
         telegramUser.id.toString(),
       );
@@ -47,12 +49,18 @@ export class ChannelHandler {
       );
 
       if (channels.length === 0) {
-        await this.showNoChannelsMessage(bot, chatId, telegramUser.id.toString());
+        await this.showNoChannelsMessage(
+          bot,
+          chatId,
+          telegramUser.id.toString(),
+        );
         return;
       }
 
-      const channelsList =
-        this.channelManagementService.formatChannelsList(channels, messages);
+      const channelsList = this.channelManagementService.formatChannelsList(
+        channels,
+        messages,
+      );
       const channelsMessage = `${messages.messages.channels.title(channels.length)}
 
 ${channelsList}
@@ -72,7 +80,9 @@ ${messages.messages.channels.management}`;
       });
     } catch (error) {
       this.logger.error("Error fetching channels list:", error);
-      const messages = await this.i18nService.getUserMessages(telegramUser.id.toString());
+      const messages = await this.i18nService.getUserMessages(
+        telegramUser.id.toString(),
+      );
       await this.telegramApiService.sendMessage(
         bot,
         chatId,
@@ -86,7 +96,9 @@ ${messages.messages.channels.management}`;
     context: TelegramHandlerContext,
   ): Promise<void> {
     const { chatId, telegramUser } = context;
-    const messages = await this.i18nService.getUserMessages(telegramUser.id.toString());
+    const messages = await this.i18nService.getUserMessages(
+      telegramUser.id.toString(),
+    );
 
     const instructionsMessage = `${messages.buttons.addChannel}
 
@@ -130,7 +142,9 @@ ${messages.messages.channels.addInstructions.note}`;
         telegramUser.id.toString(),
       );
       if (!user) {
-        const messages = await this.i18nService.getUserMessages(telegramUser.id.toString());
+        const messages = await this.i18nService.getUserMessages(
+          telegramUser.id.toString(),
+        );
         await this.telegramApiService.sendMessage(
           bot,
           chatId,
@@ -139,7 +153,9 @@ ${messages.messages.channels.addInstructions.note}`;
         return;
       }
 
-      const messages = await this.i18nService.getUserMessages(telegramUser.id.toString());
+      const messages = await this.i18nService.getUserMessages(
+        telegramUser.id.toString(),
+      );
       await this.telegramApiService.sendMessage(
         bot,
         chatId,
@@ -173,7 +189,9 @@ ${messages.messages.channels.addInstructions.note}`;
         await this.telegramApiService.sendMessage(
           bot,
           chatId,
-          messages.messages.channelAddition.alreadyInList(chat.title || username),
+          messages.messages.channelAddition.alreadyInList(
+            chat.title || username,
+          ),
         );
         return;
       }
@@ -229,7 +247,12 @@ ${canPost ? messages.messages.channels.channelInfo.readyForBroadcasting : "⚠�
 ${messages.messages.channels.channelInfo.canSendMessages}`;
 
       const keyboard = [
-        [{ text: messages.messages.channels.viewAll, callback_data: "channels_list" }],
+        [
+          {
+            text: messages.messages.channels.viewAll,
+            callback_data: "channels_list",
+          },
+        ],
       ];
 
       await this.telegramApiService.sendMessage(bot, chatId, successMessage, {
@@ -237,7 +260,9 @@ ${messages.messages.channels.channelInfo.canSendMessages}`;
       });
     } catch (error) {
       this.logger.error("Error adding channel by username:", error);
-      const messages = await this.i18nService.getUserMessages(telegramUser.id.toString());
+      const messages = await this.i18nService.getUserMessages(
+        telegramUser.id.toString(),
+      );
       await this.telegramApiService.sendMessage(
         bot,
         chatId,
@@ -379,7 +404,10 @@ ${messages.messages.channels.autoDetect}`;
     // Add action buttons
     keyboard.push([
       { text: messages.buttons.addChannel, callback_data: "add_channel" },
-      { text: `🔄 ${messages.messages.channels.refresh}`, callback_data: "refresh_channels" },
+      {
+        text: `🔄 ${messages.messages.channels.refresh}`,
+        callback_data: "refresh_channels",
+      },
     ]);
 
     return keyboard;

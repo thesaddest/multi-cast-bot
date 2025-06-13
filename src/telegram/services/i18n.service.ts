@@ -26,7 +26,10 @@ export class I18nService {
 
       return account?.user?.language || Language.ENGLISH;
     } catch (error) {
-      this.logger.error(`Error getting user language for ${telegramUserId}:`, error);
+      this.logger.error(
+        `Error getting user language for ${telegramUserId}:`,
+        error,
+      );
       return Language.ENGLISH;
     }
   }
@@ -34,7 +37,10 @@ export class I18nService {
   /**
    * Update user's language preference
    */
-  async updateUserLanguage(telegramUserId: string, language: Language): Promise<boolean> {
+  async updateUserLanguage(
+    telegramUserId: string,
+    language: Language,
+  ): Promise<boolean> {
     try {
       const account = await this.dbService.account.findFirst({
         where: {
@@ -44,7 +50,9 @@ export class I18nService {
       });
 
       if (!account) {
-        this.logger.error(`Account not found for telegram user ${telegramUserId}`);
+        this.logger.error(
+          `Account not found for telegram user ${telegramUserId}`,
+        );
         return false;
       }
 
@@ -55,7 +63,10 @@ export class I18nService {
 
       return true;
     } catch (error) {
-      this.logger.error(`Error updating user language for ${telegramUserId}:`, error);
+      this.logger.error(
+        `Error updating user language for ${telegramUserId}:`,
+        error,
+      );
       return false;
     }
   }
@@ -78,7 +89,10 @@ export class I18nService {
   /**
    * Get human-readable language name
    */
-  getLanguageName(language: Language, targetLanguage: Language = Language.ENGLISH): string {
+  getLanguageName(
+    language: Language,
+    targetLanguage: Language = Language.ENGLISH,
+  ): string {
     const names = {
       [Language.ENGLISH]: {
         [Language.ENGLISH]: "English",
@@ -99,4 +113,4 @@ export class I18nService {
   getAvailableLanguages(): Language[] {
     return Object.values(Language);
   }
-} 
+}

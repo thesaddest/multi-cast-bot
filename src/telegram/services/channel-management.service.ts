@@ -157,7 +157,7 @@ export class ChannelManagementService {
           return "❓ Unknown";
       }
     }
-    
+
     // Fallback for backward compatibility
     switch (type) {
       case ChannelType.PRIVATE:

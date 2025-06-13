@@ -18,7 +18,7 @@ export class CommandHandler {
     private messageService: MessageService,
     private subscriptionService: SubscriptionService,
     private i18nService: I18nService,
-  ) { }
+  ) {}
 
   async handleStart(
     bot: TelegramBot,
@@ -42,7 +42,9 @@ export class CommandHandler {
       );
 
       if (user) {
-        const messages = await this.i18nService.getUserMessages(telegramUser.id.toString());
+        const messages = await this.i18nService.getUserMessages(
+          telegramUser.id.toString(),
+        );
         await this.telegramApiService.sendMessage(
           bot,
           chatId,
@@ -58,7 +60,9 @@ export class CommandHandler {
           telegramUser,
         );
 
-      const messages = await this.i18nService.getUserMessages(telegramUser.id.toString());
+      const messages = await this.i18nService.getUserMessages(
+        telegramUser.id.toString(),
+      );
 
       const welcomeMessage = `${messages.messages.welcome.title(telegramUser.first_name)}
 
@@ -78,7 +82,11 @@ ${messages.messages.welcome.features}`;
     }
   }
 
-  async showMainMenu(bot: TelegramBot, chatId: number, telegramUserId?: string): Promise<void> {
+  async showMainMenu(
+    bot: TelegramBot,
+    chatId: number,
+    telegramUserId?: string,
+  ): Promise<void> {
     let messages;
     if (telegramUserId) {
       messages = await this.i18nService.getUserMessages(telegramUserId);
@@ -92,9 +100,15 @@ ${messages.messages.mainMenu.description}`;
 
     const keyboard = this.telegramApiService.createReplyKeyboard(
       [
-        [{ text: messages.buttons.profile }, { text: messages.buttons.myChannels }],
-        [{ text: messages.buttons.addChannel }, { text: messages.buttons.sendMessage }],
-        [{ text: messages.buttons.messageHistory },],
+        [
+          { text: messages.buttons.profile },
+          { text: messages.buttons.myChannels },
+        ],
+        [
+          { text: messages.buttons.addChannel },
+          { text: messages.buttons.sendMessage },
+        ],
+        [{ text: messages.buttons.messageHistory }],
         [{ text: messages.buttons.changeLanguage }],
       ],
       {
@@ -116,7 +130,9 @@ ${messages.messages.mainMenu.description}`;
     const { chatId, telegramUser } = context;
 
     try {
-      const messages = await this.i18nService.getUserMessages(telegramUser.id.toString());
+      const messages = await this.i18nService.getUserMessages(
+        telegramUser.id.toString(),
+      );
       const user = await this.userManagementService.findUserWithStats(
         telegramUser.id.toString(),
       );
@@ -144,7 +160,9 @@ ${messages.messages.mainMenu.description}`;
       const subscriptionText =
         subscriptionInfo.subscriptionPlan === "PREMIUM"
           ? messages.messages.profile.premiumActive
-          : messages.messages.profile.freePlan(subscriptionInfo.freeMessagesRemaining);
+          : messages.messages.profile.freePlan(
+              subscriptionInfo.freeMessagesRemaining,
+            );
 
       const profileMessage = `${messages.messages.profile.title}
 
@@ -165,7 +183,9 @@ ${messages.messages.profile.scheduledMessages} ${user._count?.messageQueue || 0}
       await this.telegramApiService.sendMessage(bot, chatId, profileMessage);
     } catch (error) {
       this.logger.error("Error fetching profile:", error);
-      const messages = await this.i18nService.getUserMessages(telegramUser.id.toString());
+      const messages = await this.i18nService.getUserMessages(
+        telegramUser.id.toString(),
+      );
       await this.telegramApiService.sendMessage(
         bot,
         chatId,
@@ -181,7 +201,9 @@ ${messages.messages.profile.scheduledMessages} ${user._count?.messageQueue || 0}
     const { chatId, telegramUser } = context;
 
     try {
-      const i18nMessages = await this.i18nService.getUserMessages(telegramUser.id.toString());
+      const i18nMessages = await this.i18nService.getUserMessages(
+        telegramUser.id.toString(),
+      );
       const user = await this.userManagementService.findUserByTelegramId(
         telegramUser.id.toString(),
       );
@@ -216,7 +238,9 @@ ${messages.messages.profile.scheduledMessages} ${user._count?.messageQueue || 0}
             msg.content.length > 50
               ? msg.content.substring(0, 50) + "..."
               : msg.content;
-          const channelTitle = (msg as any).channel?.title || i18nMessages.messages.general.unknown;
+          const channelTitle =
+            (msg as any).channel?.title ||
+            i18nMessages.messages.general.unknown;
 
           return `${index + 1}. ${status} ${type} ${channelTitle}\n   "${content}"\n   📅 ${date}`;
         })
@@ -233,7 +257,9 @@ ${i18nMessages.messages.general.detailedMessagesHint}`;
       await this.telegramApiService.sendMessage(bot, chatId, historyMessage);
     } catch (error) {
       this.logger.error("Error fetching message history:", error);
-      const messages = await this.i18nService.getUserMessages(telegramUser.id.toString());
+      const messages = await this.i18nService.getUserMessages(
+        telegramUser.id.toString(),
+      );
       await this.telegramApiService.sendMessage(
         bot,
         chatId,
@@ -249,9 +275,16 @@ ${i18nMessages.messages.general.detailedMessagesHint}`;
     const { chatId, telegramUser } = context;
 
     try {
-      const messages = await this.i18nService.getUserMessages(telegramUser.id.toString());
-      const userLanguage = await this.i18nService.getUserLanguage(telegramUser.id.toString());
-      const languageName = this.i18nService.getLanguageName(userLanguage, userLanguage);
+      const messages = await this.i18nService.getUserMessages(
+        telegramUser.id.toString(),
+      );
+      const userLanguage = await this.i18nService.getUserLanguage(
+        telegramUser.id.toString(),
+      );
+      const languageName = this.i18nService.getLanguageName(
+        userLanguage,
+        userLanguage,
+      );
 
       const languageMessage = `${messages.messages.language.title}
 
@@ -265,9 +298,7 @@ ${messages.messages.language.current(languageName)}`;
             { text: messages.buttons.english, callback_data: "lang_ENGLISH" },
             { text: messages.buttons.russian, callback_data: "lang_RUSSIAN" },
           ],
-          [
-            { text: messages.buttons.back, callback_data: "back_to_menu" },
-          ],
+          [{ text: messages.buttons.back, callback_data: "back_to_menu" }],
         ],
       };
 
@@ -276,7 +307,9 @@ ${messages.messages.language.current(languageName)}`;
       });
     } catch (error) {
       this.logger.error("Error showing language settings:", error);
-      const messages = await this.i18nService.getUserMessages(telegramUser.id.toString());
+      const messages = await this.i18nService.getUserMessages(
+        telegramUser.id.toString(),
+      );
       await this.telegramApiService.sendMessage(
         bot,
         chatId,
@@ -292,11 +325,17 @@ ${messages.messages.language.current(languageName)}`;
     newLanguage: Language,
   ): Promise<void> {
     try {
-      const success = await this.i18nService.updateUserLanguage(telegramUserId, newLanguage);
+      const success = await this.i18nService.updateUserLanguage(
+        telegramUserId,
+        newLanguage,
+      );
 
       if (success) {
         const messages = this.i18nService.getMessages(newLanguage);
-        const languageName = this.i18nService.getLanguageName(newLanguage, newLanguage);
+        const languageName = this.i18nService.getLanguageName(
+          newLanguage,
+          newLanguage,
+        );
 
         await this.telegramApiService.sendMessage(
           bot,
@@ -374,9 +413,11 @@ ${messages.messages.language.current(languageName)}`;
     const { chatId, telegramUser } = context;
 
     try {
-      const userLanguage = await this.i18nService.getUserLanguage(telegramUser.id.toString());
+      const userLanguage = await this.i18nService.getUserLanguage(
+        telegramUser.id.toString(),
+      );
       const messages = this.i18nService.getMessages(userLanguage);
-      
+
       const user = await this.userManagementService.findUserByTelegramId(
         telegramUser.id.toString(),
       );
@@ -446,9 +487,11 @@ ${messages.messages.subscription.clickToUpgrade}`;
       });
     } catch (error) {
       this.logger.error("Error handling subscribe command:", error);
-      const userLanguage = await this.i18nService.getUserLanguage(telegramUser.id.toString());
+      const userLanguage = await this.i18nService.getUserLanguage(
+        telegramUser.id.toString(),
+      );
       const messages = this.i18nService.getMessages(userLanguage);
-      
+
       await this.telegramApiService.sendMessage(
         bot,
         chatId,
@@ -464,9 +507,11 @@ ${messages.messages.subscription.clickToUpgrade}`;
     const { chatId, telegramUser } = context;
 
     try {
-      const userLanguage = await this.i18nService.getUserLanguage(telegramUser.id.toString());
+      const userLanguage = await this.i18nService.getUserLanguage(
+        telegramUser.id.toString(),
+      );
       const messages = this.i18nService.getMessages(userLanguage);
-      
+
       const user = await this.userManagementService.findUserByTelegramId(
         telegramUser.id.toString(),
       );
@@ -529,9 +574,11 @@ ${messages.messages.subscription.remainsActive}`;
       });
     } catch (error) {
       this.logger.error("Error handling cancel subscription command:", error);
-      const userLanguage = await this.i18nService.getUserLanguage(telegramUser.id.toString());
+      const userLanguage = await this.i18nService.getUserLanguage(
+        telegramUser.id.toString(),
+      );
       const messages = this.i18nService.getMessages(userLanguage);
-      
+
       await this.telegramApiService.sendMessage(
         bot,
         chatId,
