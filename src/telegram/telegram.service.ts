@@ -6,6 +6,7 @@ import * as TelegramBot from "node-telegram-bot-api";
 import { CommandHandler } from "./handlers/command.handler";
 import { ChannelHandler } from "./handlers/channel.handler";
 import { CallbackHandler } from "./handlers/callback.handler";
+import { BroadcastHandler } from "./handlers/broadcast.handler";
 
 // Services
 import { TelegramApiService } from "./services/telegram-api.service";
@@ -23,6 +24,7 @@ export class TelegramService implements OnModuleInit {
     private commandHandler: CommandHandler,
     private channelHandler: ChannelHandler,
     private callbackHandler: CallbackHandler,
+    private broadcastHandler: BroadcastHandler,
     private telegramApiService: TelegramApiService,
   ) {}
 
@@ -50,9 +52,13 @@ export class TelegramService implements OnModuleInit {
     this.bot.onText(/^👤 Profile$/, this.handleCommand.bind(this, 'profile'));
     this.bot.onText(/^📋 My Channels$/, this.handleCommand.bind(this, 'channels'));
     this.bot.onText(/^➕ Add Channel$/, this.handleCommand.bind(this, 'add_channel'));
+    this.bot.onText(/^📢 Send Message$/, this.handleCommand.bind(this, 'broadcast'));
 
     // Channel username input handler
     this.bot.onText(/^@([a-zA-Z0-9_]+)$/, this.handleChannelUsernameInput.bind(this));
+
+    // General message handler for broadcast sessions
+    this.bot.on("message", this.handleGeneralMessage.bind(this));
 
     // Auto-detect when bot is added to channels/groups
     this.bot.on("my_chat_member", this.handleChatMemberUpdate.bind(this));
@@ -91,6 +97,9 @@ export class TelegramService implements OnModuleInit {
           break;
         case 'add_channel':
           await this.channelHandler.handleAddChannelCommand(this.bot, context);
+          break;
+        case 'broadcast':
+          await this.broadcastHandler.handleBroadcastCommand(this.bot, context);
           break;
         case 'main_menu':
           await this.commandHandler.showMainMenu(this.bot, msg.chat.id);
@@ -165,6 +174,12 @@ export class TelegramService implements OnModuleInit {
 
   private async handleCallbackQuery(callbackQuery: TelegramBot.CallbackQuery): Promise<void> {
     try {
+      // Check for broadcast confirmations first
+      if (callbackQuery.data?.startsWith('broadcast_')) {
+        await this.broadcastHandler.handleBroadcastConfirmation(this.bot, callbackQuery);
+        return;
+      }
+
       await this.callbackHandler.handleCallbackQuery(this.bot, callbackQuery);
     } catch (error) {
       this.logger.error("Error handling callback query:", error);
@@ -175,6 +190,23 @@ export class TelegramService implements OnModuleInit {
           "❌ An error occurred. Please try again."
         );
       }
+    }
+  }
+
+  private async handleGeneralMessage(msg: TelegramBot.Message): Promise<void> {
+    // Skip if it's a command or button text (already handled by other handlers)
+    if (msg.text?.startsWith('/') || 
+        msg.text === '👤 Profile' || 
+        msg.text === '📋 My Channels' || 
+        msg.text === '➕ Add Channel' || 
+        msg.text === '📢 Send Message' ||
+        msg.text?.startsWith('@')) {
+      return;
+    }
+
+    // Check if user has an active broadcast session
+    if (this.broadcastHandler.hasBroadcastSession(msg.chat.id)) {
+      await this.broadcastHandler.handleBroadcastMessage(this.bot, msg);
     }
   }
 } 

@@ -12,6 +12,7 @@ import { TelegramApiService } from "./services/telegram-api.service";
 import { CommandHandler } from "./handlers/command.handler";
 import { ChannelHandler } from "./handlers/channel.handler";
 import { CallbackHandler } from "./handlers/callback.handler";
+import { BroadcastHandler } from "./handlers/broadcast.handler";
 
 @Module({
   providers: [
@@ -27,6 +28,7 @@ import { CallbackHandler } from "./handlers/callback.handler";
     CommandHandler,
     ChannelHandler,
     CallbackHandler,
+    BroadcastHandler,
   ],
   exports: [TelegramService],
 })
