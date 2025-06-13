@@ -11,6 +11,7 @@ model User {
   id        String   @id @default(uuid())
   email     String?  @unique
   username  String?
+  role      UserRole @default(USER)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -203,4 +204,9 @@ enum QueueStatus {
   COMPLETED
   FAILED
   CANCELLED
+}
+
+enum UserRole {
+  USER
+  ADMIN
 }
