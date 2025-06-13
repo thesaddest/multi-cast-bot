@@ -3,6 +3,7 @@ import * as TelegramBot from "node-telegram-bot-api";
 import { UserManagementService } from "../services/user-management.service";
 import { TelegramApiService } from "../services/telegram-api.service";
 import { MessageService } from "../services/message.service";
+import { SubscriptionService } from "../../stripe/subscription.service";
 import { TelegramHandlerContext } from "../types/telegram.types";
 
 @Injectable()
@@ -13,6 +14,7 @@ export class CommandHandler {
     private userManagementService: UserManagementService,
     private telegramApiService: TelegramApiService,
     private messageService: MessageService,
+    private subscriptionService: SubscriptionService,
   ) {}
 
   async handleStart(
@@ -126,6 +128,15 @@ Choose what you'd like to do:`;
         )
         .join("\n");
 
+      // Get subscription info
+      const subscriptionInfo =
+        await this.subscriptionService.getUserSubscriptionInfo(user.id);
+
+      const subscriptionText =
+        subscriptionInfo.subscriptionPlan === "PREMIUM"
+          ? `💎 Premium ($10/month) - Active`
+          : `🆓 Free Plan - ${subscriptionInfo.freeMessagesRemaining}/3 messages remaining`;
+
       const profileMessage = `👤 Your Profile
 
 🆔 User ID: ${user.id}
@@ -133,11 +144,13 @@ Choose what you'd like to do:`;
 👤 Username: ${user.username || "Not set"}
 📅 Member since: ${user.createdAt.toDateString()}
 
+💰 Subscription: ${subscriptionText}
+
 🔗 Connected Platforms (${user.accounts.length}):
 ${platformList || "None"}
 
 📺 Active Channels: ${user.channels.length}
-📤 Messages Sent: ${user._count?.messages || 0}
+📤 Messages Sent: ${subscriptionInfo.totalMessages}
 ⏰ Scheduled Messages: ${user._count?.messageQueue || 0}`;
 
       await this.telegramApiService.sendMessage(bot, chatId, profileMessage);
@@ -257,6 +270,167 @@ Use /messages_detailed for more information about specific messages.`;
         return "📍";
       default:
         return "💬";
+    }
+  }
+
+  async handleSubscribe(
+    bot: TelegramBot,
+    context: TelegramHandlerContext,
+  ): Promise<void> {
+    const { chatId, telegramUser } = context;
+
+    try {
+      const user = await this.userManagementService.findUserByTelegramId(
+        telegramUser.id.toString(),
+      );
+      if (!user) {
+        await this.telegramApiService.sendMessage(
+          bot,
+          chatId,
+          "❌ User not found. Please use /start to create an account.",
+        );
+        return;
+      }
+
+      const subscriptionInfo =
+        await this.subscriptionService.getUserSubscriptionInfo(user.id);
+
+      if (subscriptionInfo.subscriptionPlan === "PREMIUM") {
+        await this.telegramApiService.sendMessage(
+          bot,
+          chatId,
+          `💎 Premium Subscription Active!
+
+You already have an active premium subscription.
+
+📊 Your Stats:
+• Total messages sent: ${subscriptionInfo.totalMessages}
+• Subscription status: ${subscriptionInfo.subscriptionStatus}
+
+Use /cancel_subscription if you want to cancel your subscription.`,
+        );
+        return;
+      }
+
+      const subscribeMessage = `💎 Upgrade to Premium
+
+🆓 Your Free Plan:
+• Free messages used: ${subscriptionInfo.freeMessagesUsed}/3
+• Remaining: ${subscriptionInfo.freeMessagesRemaining}
+
+💎 Premium Plan - $10/month:
+• ✅ Unlimited messages
+• ✅ Priority support
+• ✅ Advanced scheduling
+• ✅ Analytics dashboard
+• ✅ Custom branding
+
+Click the button below to upgrade:`;
+
+      const keyboard = {
+        inline_keyboard: [
+          [
+            {
+              text: "💎 Upgrade to Premium",
+              callback_data: "upgrade_premium",
+            },
+          ],
+          [
+            {
+              text: "❌ Cancel",
+              callback_data: "cancel_subscription_flow",
+            },
+          ],
+        ],
+      };
+
+      await this.telegramApiService.sendMessage(bot, chatId, subscribeMessage, {
+        reply_markup: keyboard,
+      });
+    } catch (error) {
+      this.logger.error("Error handling subscribe command:", error);
+      await this.telegramApiService.sendMessage(
+        bot,
+        chatId,
+        "❌ Error loading subscription information. Please try again.",
+      );
+    }
+  }
+
+  async handleCancelSubscription(
+    bot: TelegramBot,
+    context: TelegramHandlerContext,
+  ): Promise<void> {
+    const { chatId, telegramUser } = context;
+
+    try {
+      const user = await this.userManagementService.findUserByTelegramId(
+        telegramUser.id.toString(),
+      );
+      if (!user) {
+        await this.telegramApiService.sendMessage(
+          bot,
+          chatId,
+          "❌ User not found. Please use /start to create an account.",
+        );
+        return;
+      }
+
+      const subscriptionInfo =
+        await this.subscriptionService.getUserSubscriptionInfo(user.id);
+
+      if (subscriptionInfo.subscriptionPlan !== "PREMIUM") {
+        await this.telegramApiService.sendMessage(
+          bot,
+          chatId,
+          "❌ You don't have an active premium subscription to cancel.",
+        );
+        return;
+      }
+
+      const cancelMessage = `🚫 Cancel Premium Subscription
+
+Are you sure you want to cancel your premium subscription?
+
+❌ You will lose:
+• Unlimited messages
+• Priority support
+• Advanced features
+
+✅ You will keep:
+• 3 free messages per month
+• Basic functionality
+• Your data and channels
+
+Your subscription will remain active until the end of the current billing period.`;
+
+      const keyboard = {
+        inline_keyboard: [
+          [
+            {
+              text: "🚫 Yes, Cancel Subscription",
+              callback_data: "confirm_cancel_subscription",
+            },
+          ],
+          [
+            {
+              text: "❌ No, Keep Premium",
+              callback_data: "keep_subscription",
+            },
+          ],
+        ],
+      };
+
+      await this.telegramApiService.sendMessage(bot, chatId, cancelMessage, {
+        reply_markup: keyboard,
+      });
+    } catch (error) {
+      this.logger.error("Error handling cancel subscription command:", error);
+      await this.telegramApiService.sendMessage(
+        bot,
+        chatId,
+        "❌ Error loading subscription information. Please try again.",
+      );
     }
   }
 }

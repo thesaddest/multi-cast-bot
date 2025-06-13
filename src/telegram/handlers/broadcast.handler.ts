@@ -4,6 +4,7 @@ import { UserManagementService } from "../services/user-management.service";
 import { ChannelManagementService } from "../services/channel-management.service";
 import { TelegramApiService } from "../services/telegram-api.service";
 import { MessageService } from "../services/message.service";
+import { SubscriptionService } from "../../stripe/subscription.service";
 import { TelegramHandlerContext } from "../types/telegram.types";
 import { Platform, MessageType, Channel } from "@prisma/client";
 
@@ -30,6 +31,7 @@ export class BroadcastHandler {
     private channelManagementService: ChannelManagementService,
     private telegramApiService: TelegramApiService,
     private messageService: MessageService,
+    private subscriptionService: SubscriptionService,
   ) {}
 
   async handleBroadcastCommand(
@@ -47,6 +49,33 @@ export class BroadcastHandler {
           bot,
           chatId,
           "❌ User not found. Please use /start to create an account.",
+        );
+        return;
+      }
+
+      // Check subscription limits
+      const canSend = await this.subscriptionService.canSendMessage(user.id);
+      if (!canSend.allowed) {
+        const subscriptionInfo =
+          await this.subscriptionService.getUserSubscriptionInfo(user.id);
+
+        await this.telegramApiService.sendMessage(
+          bot,
+          chatId,
+          `🚫 Message Limit Reached
+
+${canSend.reason}
+
+📊 Your Usage:
+• Free messages used: ${subscriptionInfo.freeMessagesUsed}/3
+• Total messages sent: ${subscriptionInfo.totalMessages}
+
+💎 Upgrade to Premium:
+• Unlimited messages: $10/month
+• Priority support
+• Advanced features
+
+Use /subscribe to upgrade your account!`,
         );
         return;
       }
@@ -309,6 +338,11 @@ ${results.join("\n")}
 ${failureCount > 0 ? "\n💡 Failed channels may have restricted bot permissions or be inactive." : ""}`;
 
       await this.telegramApiService.sendMessage(bot, chatId, summaryMessage);
+
+      // Increment message count for successful broadcast
+      if (successCount > 0) {
+        await this.subscriptionService.incrementMessageCount(session.userId);
+      }
 
       // Clean up session
       this.broadcastSessions.delete(chatId);

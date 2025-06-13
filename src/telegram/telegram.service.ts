@@ -10,6 +10,7 @@ import { BroadcastHandler } from "./handlers/broadcast.handler";
 
 // Services
 import { TelegramApiService } from "./services/telegram-api.service";
+import { DbService } from "../db/db.service";
 
 // Types
 import { TelegramHandlerContext } from "./types/telegram.types";
@@ -26,7 +27,8 @@ export class TelegramService implements OnModuleInit {
     private callbackHandler: CallbackHandler,
     private broadcastHandler: BroadcastHandler,
     private telegramApiService: TelegramApiService,
-  ) {}
+    private dbService: DbService,
+  ) { }
 
   onModuleInit() {
     const token = this.configService.get<string>("tg.api_token");
@@ -51,6 +53,11 @@ export class TelegramService implements OnModuleInit {
     );
     this.bot.onText(/\/messages/, this.handleCommand.bind(this, "messages"));
     this.bot.onText(/\/menu/, this.handleCommand.bind(this, "menu"));
+    this.bot.onText(/\/subscribe/, this.handleCommand.bind(this, "subscribe"));
+    this.bot.onText(
+      /\/cancel_subscription/,
+      this.handleCommand.bind(this, "cancel_subscription"),
+    );
 
     // Button text handlers
     this.bot.onText(/^👤 Profile$/, this.handleCommand.bind(this, "profile"));
@@ -140,6 +147,12 @@ export class TelegramService implements OnModuleInit {
             context.chatId,
             "📊 Statistics feature coming soon!",
           );
+          break;
+        case "subscribe":
+          await this.commandHandler.handleSubscribe(this.bot, context);
+          break;
+        case "cancel_subscription":
+          await this.commandHandler.handleCancelSubscription(this.bot, context);
           break;
         default:
           this.logger.warn(`Unknown command: ${command}`);
@@ -272,6 +285,60 @@ export class TelegramService implements OnModuleInit {
     // Check if user has an active broadcast session
     if (this.broadcastHandler.hasBroadcastSession(msg.chat.id)) {
       await this.broadcastHandler.handleBroadcastMessage(this.bot, msg);
+    }
+  }
+
+  // Public method to send notifications from other services
+  async sendSubscriptionSuccessNotification(
+    chatId: number,
+    userDisplayName?: string,
+  ): Promise<void> {
+    try {
+      // Send success notification
+      const successMessage = `🎉 Premium Subscription Activated!
+
+✅ Your payment was successful and your premium subscription is now active!
+
+💎 You now have access to:
+• ✅ Unlimited messages
+• ✅ Priority support
+• ✅ Advanced scheduling
+• ✅ Analytics dashboard
+• ✅ Custom branding
+
+Thank you for upgrading! You can now enjoy all premium features.`;
+
+      await this.telegramApiService.sendMessage(
+        this.bot,
+        chatId,
+        successMessage,
+      );
+
+      // Show updated profile after a short delay
+      try {
+        const context = {
+          chatId,
+          telegramUser: {
+            id: chatId,
+            is_bot: false,
+            first_name: userDisplayName || "User",
+            username: undefined,
+          } as any,
+          message: {} as any,
+        };
+
+        await this.commandHandler.handleProfile(this.bot, context);
+      } catch (error) {
+        this.logger.error(
+          "Error showing profile after subscription success:",
+          error,
+        );
+      }
+    } catch (error) {
+      this.logger.error(
+        "Error sending subscription success notification:",
+        error,
+      );
     }
   }
 }

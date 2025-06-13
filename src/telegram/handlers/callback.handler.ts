@@ -3,6 +3,7 @@ import * as TelegramBot from "node-telegram-bot-api";
 import { UserManagementService } from "../services/user-management.service";
 import { ChannelManagementService } from "../services/channel-management.service";
 import { TelegramApiService } from "../services/telegram-api.service";
+import { SubscriptionService } from "../../stripe/subscription.service";
 import { CommandHandler } from "./command.handler";
 import { ChannelHandler } from "./channel.handler";
 import {
@@ -18,6 +19,7 @@ export class CallbackHandler {
     private userManagementService: UserManagementService,
     private channelManagementService: ChannelManagementService,
     private telegramApiService: TelegramApiService,
+    private subscriptionService: SubscriptionService,
     private commandHandler: CommandHandler,
     private channelHandler: ChannelHandler,
   ) {}
@@ -80,6 +82,22 @@ export class CallbackHandler {
 
       case "refresh_channels":
         await this.channelHandler.handleChannelsList(bot, context);
+        break;
+
+      case "upgrade_premium":
+        await this.handleUpgradePremium(bot, context);
+        break;
+
+      case "cancel_subscription_flow":
+        await this.handleCancelSubscriptionFlow(bot, context);
+        break;
+
+      case "confirm_cancel_subscription":
+        await this.handleConfirmCancelSubscription(bot, context);
+        break;
+
+      case "keep_subscription":
+        await this.handleKeepSubscription(bot, context);
         break;
 
       default:
@@ -508,5 +526,163 @@ You may want to remove this channel and add it again.`,
         "❌ Error refreshing channel information.",
       );
     }
+  }
+
+  private async handleUpgradePremium(
+    bot: TelegramBot,
+    context: TelegramHandlerContext,
+  ): Promise<void> {
+    const { chatId, telegramUser } = context;
+
+    try {
+      const user = await this.userManagementService.findUserByTelegramId(
+        telegramUser.id.toString(),
+      );
+      if (!user) {
+        await this.telegramApiService.sendMessage(
+          bot,
+          chatId,
+          "❌ User not found.",
+        );
+        return;
+      }
+
+      const email = user.email || `user_${user.id}@telegram.local`;
+      const baseUrl = process.env.BASE_URL || "https://your-domain.com";
+      const successUrl = `${baseUrl}/stripe/success?user_id=${user.id}&session_id={CHECKOUT_SESSION_ID}`;
+      const cancelUrl = `${baseUrl}/stripe/cancel?user_id=${user.id}`;
+
+      try {
+        const checkoutUrl =
+          await this.subscriptionService.createCheckoutSession(
+            user.id,
+            email,
+            successUrl,
+            cancelUrl,
+          );
+
+        const upgradeMessage = `💎 Upgrade to Premium
+
+Click the link below to complete your premium subscription:
+
+🔗 [Complete Payment](${checkoutUrl})
+
+✅ What you'll get:
+• Unlimited messages
+• Priority support  
+• Advanced features
+• Analytics dashboard
+
+💡 The payment is processed securely by Stripe.`;
+
+        const keyboard = {
+          inline_keyboard: [
+            [
+              {
+                text: "💎 Pay with Stripe",
+                url: checkoutUrl,
+              },
+            ],
+            [
+              {
+                text: "❌ Cancel",
+                callback_data: "cancel_subscription_flow",
+              },
+            ],
+          ],
+        };
+
+        await this.telegramApiService.sendMessage(bot, chatId, upgradeMessage, {
+          reply_markup: keyboard,
+        });
+      } catch (error) {
+        this.logger.error("Error creating checkout session:", error);
+        await this.telegramApiService.sendMessage(
+          bot,
+          chatId,
+          "❌ Error creating payment session. Please try again later or contact support.",
+        );
+      }
+    } catch (error) {
+      this.logger.error("Error handling upgrade premium:", error);
+      await this.telegramApiService.sendMessage(
+        bot,
+        chatId,
+        "❌ Error processing upgrade request.",
+      );
+    }
+  }
+
+  private async handleCancelSubscriptionFlow(
+    bot: TelegramBot,
+    context: TelegramHandlerContext,
+  ): Promise<void> {
+    const { chatId } = context;
+
+    await this.telegramApiService.sendMessage(
+      bot,
+      chatId,
+      "❌ Subscription upgrade cancelled. You can upgrade anytime using /subscribe.",
+    );
+  }
+
+  private async handleConfirmCancelSubscription(
+    bot: TelegramBot,
+    context: TelegramHandlerContext,
+  ): Promise<void> {
+    const { chatId, telegramUser } = context;
+
+    try {
+      const user = await this.userManagementService.findUserByTelegramId(
+        telegramUser.id.toString(),
+      );
+      if (!user) {
+        await this.telegramApiService.sendMessage(
+          bot,
+          chatId,
+          "❌ User not found.",
+        );
+        return;
+      }
+
+      await this.subscriptionService.cancelSubscription(user.id);
+
+      await this.telegramApiService.sendMessage(
+        bot,
+        chatId,
+        `✅ Subscription Cancelled
+
+Your premium subscription has been cancelled successfully.
+
+📅 Your premium benefits will remain active until the end of the current billing period.
+
+🆓 After that, you'll return to the free plan with:
+• 3 free messages per month
+• Basic functionality
+• All your data and channels preserved
+
+You can resubscribe anytime using /subscribe.`,
+      );
+    } catch (error) {
+      this.logger.error("Error cancelling subscription:", error);
+      await this.telegramApiService.sendMessage(
+        bot,
+        chatId,
+        "❌ Error cancelling subscription. Please try again or contact support.",
+      );
+    }
+  }
+
+  private async handleKeepSubscription(
+    bot: TelegramBot,
+    context: TelegramHandlerContext,
+  ): Promise<void> {
+    const { chatId } = context;
+
+    await this.telegramApiService.sendMessage(
+      bot,
+      chatId,
+      "💎 Great choice! Your premium subscription will continue as normal. Thank you for staying with us!",
+    );
   }
 }

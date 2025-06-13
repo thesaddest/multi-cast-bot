@@ -100,4 +100,63 @@ export class UserManagementService {
 
     return user;
   }
+
+  async findUserTelegramInfoById(userId: string): Promise<{
+    id: string;
+    telegramId: string;
+    username?: string;
+    displayName?: string;
+  } | null> {
+    try {
+      const user = await this.dbService.user.findUnique({
+        where: { id: userId },
+        include: {
+          accounts: {
+            where: { platform: Platform.TELEGRAM },
+          },
+        },
+      });
+
+      if (user && user.accounts.length > 0) {
+        const telegramAccount = user.accounts[0];
+        return {
+          id: user.id,
+          telegramId: telegramAccount.platformId,
+          username: telegramAccount.username,
+          displayName: telegramAccount.displayName || user.username,
+        };
+      }
+      return null;
+    } catch (error) {
+      this.logger.error("Error finding user Telegram info:", error);
+      return null;
+    }
+  }
+
+  async notifyUserOfSubscriptionSuccess(
+    userId: string,
+    telegramService: any, // We'll type this properly when we inject it
+  ): Promise<void> {
+    try {
+      const userInfo = await this.findUserTelegramInfoById(userId);
+      if (!userInfo) {
+        this.logger.warn(
+          `User ${userId} not found for subscription notification`,
+        );
+        return;
+      }
+
+      const chatId = parseInt(userInfo.telegramId);
+      await telegramService.sendSubscriptionSuccessNotification(
+        chatId,
+        userInfo.displayName,
+      );
+
+      this.logger.log(
+        `Subscription success notification sent to user ${userId}`,
+      );
+    } catch (error) {
+      this.logger.error("Error notifying user of subscription success:", error);
+    }
+  }
 }

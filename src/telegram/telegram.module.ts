@@ -8,6 +8,8 @@ import { UserManagementService } from "./services/user-management.service";
 import { ChannelManagementService } from "./services/channel-management.service";
 import { TelegramApiService } from "./services/telegram-api.service";
 import { MessageService } from "./services/message.service";
+import { SubscriptionService } from "../stripe/subscription.service";
+import { StripeService } from "../stripe/stripe.service";
 
 // Handlers
 import { CommandHandler } from "./handlers/command.handler";
@@ -16,6 +18,7 @@ import { CallbackHandler } from "./handlers/callback.handler";
 import { BroadcastHandler } from "./handlers/broadcast.handler";
 
 @Module({
+  imports: [],
   providers: [
     TelegramService,
     ConfigService,
@@ -26,6 +29,8 @@ import { BroadcastHandler } from "./handlers/broadcast.handler";
     ChannelManagementService,
     TelegramApiService,
     MessageService,
+    SubscriptionService,
+    StripeService,
     // Handlers
     CommandHandler,
     ChannelHandler,

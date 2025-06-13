@@ -13,14 +13,33 @@ CREATE TYPE "MessageStatus" AS ENUM ('PENDING', 'SENT', 'FAILED', 'CANCELLED', '
 -- CreateEnum
 CREATE TYPE "QueueStatus" AS ENUM ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'CANCELLED');
 
+-- CreateEnum
+CREATE TYPE "UserRole" AS ENUM ('USER', 'ADMIN');
+
+-- CreateEnum
+CREATE TYPE "SubscriptionStatus" AS ENUM ('FREE_TRIAL', 'ACTIVE', 'CANCELLED', 'EXPIRED', 'PAST_DUE', 'UNPAID');
+
+-- CreateEnum
+CREATE TYPE "SubscriptionPlan" AS ENUM ('FREE', 'PREMIUM');
+
 -- CreateTable
 CREATE TABLE "users" (
     "id" TEXT NOT NULL,
     "email" TEXT,
     "username" TEXT,
+    "role" "UserRole" NOT NULL DEFAULT 'USER',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "primaryPlatform" "Platform",
+    "stripeCustomerId" TEXT,
+    "stripeSubscriptionId" TEXT,
+    "subscriptionStatus" "SubscriptionStatus" NOT NULL DEFAULT 'FREE_TRIAL',
+    "subscriptionPlan" "SubscriptionPlan" NOT NULL DEFAULT 'FREE',
+    "messageCount" INTEGER NOT NULL DEFAULT 0,
+    "freeMessagesUsed" INTEGER NOT NULL DEFAULT 0,
+    "subscriptionStartDate" TIMESTAMP(3),
+    "subscriptionEndDate" TIMESTAMP(3),
+    "billingCycleAnchor" TIMESTAMP(3),
 
     CONSTRAINT "users_pkey" PRIMARY KEY ("id")
 );
@@ -114,6 +133,12 @@ CREATE TABLE "queued_messages" (
 
 -- CreateIndex
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "users_stripeCustomerId_key" ON "users"("stripeCustomerId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "users_stripeSubscriptionId_key" ON "users"("stripeSubscriptionId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "accounts_platform_platformId_key" ON "accounts"("platform", "platformId");

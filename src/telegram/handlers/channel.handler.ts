@@ -224,7 +224,6 @@ You can now send messages to this channel!`;
 
       const keyboard = [
         [{ text: "📋 View All Channels", callback_data: "channels_list" }],
-        [{ text: "📢 Send Message", callback_data: "send_message" }],
       ];
 
       await this.telegramApiService.sendMessage(bot, chatId, successMessage, {

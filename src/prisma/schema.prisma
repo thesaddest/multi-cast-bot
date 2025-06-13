@@ -18,6 +18,17 @@ model User {
   // Primary platform used for registration
   primaryPlatform Platform?
 
+  // Subscription fields
+  stripeCustomerId       String?   @unique
+  stripeSubscriptionId   String?   @unique
+  subscriptionStatus     SubscriptionStatus @default(FREE_TRIAL)
+  subscriptionPlan       SubscriptionPlan   @default(FREE)
+  messageCount           Int       @default(0)
+  freeMessagesUsed       Int       @default(0)
+  subscriptionStartDate  DateTime?
+  subscriptionEndDate    DateTime?
+  billingCycleAnchor     DateTime?
+
   // Platform-specific accounts
   accounts     Account[]
   channels     Channel[]
@@ -209,4 +220,18 @@ enum QueueStatus {
 enum UserRole {
   USER
   ADMIN
+}
+
+enum SubscriptionStatus {
+  FREE_TRIAL
+  ACTIVE
+  CANCELLED
+  EXPIRED
+  PAST_DUE
+  UNPAID
+}
+
+enum SubscriptionPlan {
+  FREE
+  PREMIUM
 }
