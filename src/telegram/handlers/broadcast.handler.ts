@@ -5,6 +5,7 @@ import { ChannelManagementService } from "../services/channel-management.service
 import { TelegramApiService } from "../services/telegram-api.service";
 import { MessageService } from "../services/message.service";
 import { SubscriptionService } from "../../stripe/subscription.service";
+import { I18nService } from "../services/i18n.service";
 import { TelegramHandlerContext } from "../types/telegram.types";
 import { Platform, MessageType, Channel } from "@prisma/client";
 
@@ -32,6 +33,7 @@ export class BroadcastHandler {
     private telegramApiService: TelegramApiService,
     private messageService: MessageService,
     private subscriptionService: SubscriptionService,
+    private i18nService: I18nService,
   ) {}
 
   async handleBroadcastCommand(
@@ -41,6 +43,9 @@ export class BroadcastHandler {
     const { chatId, telegramUser } = context;
 
     try {
+      const userLanguage = await this.i18nService.getUserLanguage(telegramUser.id.toString());
+      const messages = this.i18nService.getMessages(userLanguage);
+      
       const user = await this.userManagementService.findUserByTelegramId(
         telegramUser.id.toString(),
       );
@@ -48,7 +53,7 @@ export class BroadcastHandler {
         await this.telegramApiService.sendMessage(
           bot,
           chatId,
-          "❌ User not found. Please use /start to create an account.",
+          messages.messages.errors.userNotFound,
         );
         return;
       }
@@ -62,20 +67,20 @@ export class BroadcastHandler {
         await this.telegramApiService.sendMessage(
           bot,
           chatId,
-          `🚫 Message Limit Reached
+          `${messages.messages.broadcast.limitReached}
 
 ${canSend.reason}
 
-📊 Your Usage:
-• Free messages used: ${subscriptionInfo.freeMessagesUsed}/3
-• Total messages sent: ${subscriptionInfo.totalMessages}
+${messages.messages.broadcast.yourUsage}
+${messages.messages.broadcast.freeMessagesUsed(subscriptionInfo.freeMessagesUsed, 3)}
+${messages.messages.broadcast.totalMessagesSent(subscriptionInfo.totalMessages)}
 
-💎 Upgrade to Premium:
-• Unlimited messages: $10/month
-• Priority support
-• Advanced features
+${messages.messages.broadcast.upgradePrompt}
+${messages.messages.broadcast.unlimitedMessages}
+${messages.messages.broadcast.prioritySupport}
+${messages.messages.broadcast.advancedFeatures}
 
-Use /subscribe to upgrade your account!`,
+${messages.messages.broadcast.useSubscribeCommand}`,
         );
         return;
       }
@@ -92,16 +97,16 @@ Use /subscribe to upgrade your account!`,
         await this.telegramApiService.sendMessage(
           bot,
           chatId,
-          `📢 No Active Channels
+          `${messages.messages.broadcast.noActiveChannels}
 
-You don't have any active channels where you can post messages.
+${messages.messages.broadcast.noActiveChannelsDescription}
 
-To broadcast messages, you need to:
-1️⃣ Add channels using "➕ Add Channel"
-2️⃣ Make sure the bot has posting permissions
-3️⃣ Activate the channels you want to use
+${messages.messages.broadcast.needToSetup}
+${messages.messages.broadcast.addChannelsStep}
+${messages.messages.broadcast.checkPermissionsStep}
+${messages.messages.broadcast.activateChannelsStep}
 
-Use "📋 My Channels" to manage your channels.`,
+${messages.messages.broadcast.manageChannelsHint}`,
         );
         return;
       }
@@ -124,27 +129,30 @@ Use "📋 My Channels" to manage your channels.`,
       await this.telegramApiService.sendMessage(
         bot,
         chatId,
-        `📢 Broadcast Message
+        `${messages.messages.broadcast.broadcastTitle}
 
-You have ${activeChannels.length} active channel(s) ready for broadcasting:
+${messages.messages.broadcast.activeChannelsReady(activeChannels.length)}
 
 ${channelList}
 
-📝 Please type your message that you want to send to all these channels:
+${messages.messages.broadcast.typeMessage}
 
-💡 Tips:
-• You can send text, photos, videos, or documents
-• Media files will be posted natively (not forwarded)
-• Use formatting: *bold*, _italic_, \`code\`
-• Type /cancel to cancel broadcasting`,
+${messages.messages.broadcast.tips}
+${messages.messages.broadcast.tipText}
+${messages.messages.broadcast.tipMedia}
+${messages.messages.broadcast.tipFormatting}
+${messages.messages.broadcast.tipCancel}`,
         { parse_mode: "Markdown" },
       );
     } catch (error) {
       this.logger.error("Error starting broadcast:", error);
+      const userLanguage = await this.i18nService.getUserLanguage(telegramUser.id.toString());
+      const messages = this.i18nService.getMessages(userLanguage);
+      
       await this.telegramApiService.sendMessage(
         bot,
         chatId,
-        "❌ Error starting broadcast. Please try again.",
+        messages.messages.errors.generalError,
       );
     }
   }
@@ -164,10 +172,13 @@ ${channelList}
       // Handle cancel command
       if (msg.text === "/cancel") {
         this.broadcastSessions.delete(chatId);
+        const userLanguage = await this.i18nService.getUserLanguage(msg.from?.id.toString() || '');
+        const messages = this.i18nService.getMessages(userLanguage);
+        
         await this.telegramApiService.sendMessage(
           bot,
           chatId,
-          "❌ Broadcast cancelled.",
+          messages.messages.broadcast.broadcastCancelled,
         );
         return;
       }
@@ -191,10 +202,13 @@ ${channelList}
       await this.showBroadcastConfirmation(bot, session, chatId);
     } catch (error) {
       this.logger.error("Error handling broadcast message:", error);
+      const userLanguage = await this.i18nService.getUserLanguage(msg.from?.id.toString() || '');
+      const messages = this.i18nService.getMessages(userLanguage);
+      
       await this.telegramApiService.sendMessage(
         bot,
         chatId,
-        "❌ Error processing your message. Please try again.",
+        messages.messages.errors.generalError,
       );
     }
   }
@@ -208,8 +222,11 @@ ${channelList}
 
     const session = this.broadcastSessions.get(chatId);
     if (!session || session.step !== "confirming") {
+      const userLanguage = await this.i18nService.getUserLanguage(callbackQuery.from.id.toString());
+      const messages = this.i18nService.getMessages(userLanguage);
+      
       await bot.answerCallbackQuery(callbackQuery.id, {
-        text: "Session expired. Please start again.",
+        text: messages.messages.broadcast.sessionExpired,
       });
       return;
     }
@@ -217,19 +234,25 @@ ${channelList}
     try {
       if (callbackQuery.data === "broadcast_cancel") {
         this.broadcastSessions.delete(chatId);
-        await bot.editMessageText("❌ Broadcast cancelled.", {
+        const userLanguage = await this.i18nService.getUserLanguage(callbackQuery.from.id.toString());
+        const messages = this.i18nService.getMessages(userLanguage);
+        
+        await bot.editMessageText(messages.messages.broadcast.broadcastCancelled, {
           chat_id: chatId,
           message_id: callbackQuery.message?.message_id,
         });
-        await bot.answerCallbackQuery(callbackQuery.id, { text: "Cancelled" });
+        await bot.answerCallbackQuery(callbackQuery.id, { text: messages.messages.broadcast.cancelled });
         return;
       }
 
       if (callbackQuery.data === "broadcast_confirm") {
         session.step = "broadcasting";
 
+        const telegramUserId = callbackQuery.from.id.toString();
+        const messages = await this.i18nService.getUserMessages(telegramUserId);
+        
         await bot.editMessageText(
-          "📡 Broadcasting message...\n\nPlease wait while we send your message to all channels.",
+          `${messages.messages.broadcast.inProgress}\n\n${messages.messages.broadcast.inProgressDescription}`,
           {
             chat_id: chatId,
             message_id: callbackQuery.message?.message_id,
@@ -237,7 +260,7 @@ ${channelList}
         );
 
         await bot.answerCallbackQuery(callbackQuery.id, {
-          text: "Broadcasting...",
+          text: messages.messages.broadcast.confirming,
         });
 
         // Start the actual broadcasting
@@ -325,17 +348,24 @@ ${channelList}
         }
       }
 
+      // Get user's language for the summary
+      const userInfo = await this.userManagementService.findUserTelegramInfoById(session.userId);
+      
+      const messages = userInfo?.telegramId 
+        ? await this.i18nService.getUserMessages(userInfo.telegramId)
+        : this.i18nService.getMessages("ENGLISH" as any);
+
       // Send results summary
-      const summaryMessage = `📊 Broadcast Complete!
+      const summaryMessage = `${messages.messages.broadcast.complete}
 
-✅ Successfully sent: ${successCount}
-❌ Failed: ${failureCount}
-📊 Total channels: ${activeChannels.length}
+${messages.messages.broadcast.successCount(successCount)}
+${messages.messages.broadcast.failedCount(failureCount)}
+${messages.messages.broadcast.totalChannels(activeChannels.length)}
 
-📋 Detailed Results:
+${messages.messages.broadcast.detailedResults}
 ${results.join("\n")}
 
-${failureCount > 0 ? "\n💡 Failed channels may have restricted bot permissions or be inactive." : ""}`;
+${failureCount > 0 ? `\n${messages.messages.broadcast.failedChannelsNote}` : ""}`;
 
       await this.telegramApiService.sendMessage(bot, chatId, summaryMessage);
 
@@ -348,10 +378,17 @@ ${failureCount > 0 ? "\n💡 Failed channels may have restricted bot permissions
       this.broadcastSessions.delete(chatId);
     } catch (error) {
       this.logger.error("Error executing broadcast:", error);
+      
+      // Get user's language for error message
+      const userInfo = await this.userManagementService.findUserTelegramInfoById(session.userId);
+      const messages = userInfo?.telegramId 
+        ? await this.i18nService.getUserMessages(userInfo.telegramId)
+        : this.i18nService.getMessages("ENGLISH" as any);
+      
       await this.telegramApiService.sendMessage(
         bot,
         chatId,
-        "❌ Error during broadcast. Some messages may not have been sent.",
+        messages.messages.broadcast.error,
       );
       this.broadcastSessions.delete(chatId);
     }
@@ -425,6 +462,12 @@ ${failureCount > 0 ? "\n💡 Failed channels may have restricted bot permissions
     session: BroadcastSession,
     chatId: number,
   ): Promise<void> {
+    // Get user language for confirmation message
+    const userInfo = await this.userManagementService.findUserTelegramInfoById(session.userId);
+    if (!userInfo) return;
+    
+    const userLanguage = await this.i18nService.getUserLanguage(userInfo.telegramId);
+    const messages = this.i18nService.getMessages(userLanguage);
     // Get user's active channels for confirmation
     const channels = await this.channelManagementService.getUserChannels(
       session.userId,
@@ -453,22 +496,22 @@ ${failureCount > 0 ? "\n💡 Failed channels may have restricted bot permissions
         : session.message
       : "[Media message]";
 
-    const confirmationMessage = `📢 Confirm Broadcast
+    const confirmationMessage = `${messages.messages.messages.confirmBroadcast}
 
-Your message will be sent to ${activeChannels.length} channel(s):
+${messages.messages.messages.messageSentTo(activeChannels.length)}
 
 ${channelList}
 
-📝 Message Preview:
+${messages.messages.messages.messagePreview}
 ${messagePreview}${mediaInfo}
 
-Are you sure you want to broadcast this message?`;
+${messages.messages.messages.confirmBroadcastQuestion}`;
 
     const keyboard: TelegramBot.InlineKeyboardMarkup = {
       inline_keyboard: [
         [
-          { text: "✅ Send to All", callback_data: "broadcast_confirm" },
-          { text: "❌ Cancel", callback_data: "broadcast_cancel" },
+          { text: messages.messages.broadcast.sendToAll, callback_data: "broadcast_confirm" },
+          { text: messages.messages.general.cancelled, callback_data: "broadcast_cancel" },
         ],
       ],
     };

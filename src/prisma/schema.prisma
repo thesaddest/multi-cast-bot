@@ -12,6 +12,7 @@ model User {
   email     String?  @unique
   username  String?
   role      UserRole @default(USER)
+  language  Language @default(ENGLISH)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -72,7 +73,6 @@ model Channel {
   description String?
   memberCount Int?
   isActive    Boolean     @default(true)
-
   // Platform-specific metadata stored as JSON
   metadata Json?
 
@@ -234,4 +234,9 @@ enum SubscriptionStatus {
 enum SubscriptionPlan {
   FREE
   PREMIUM
+}
+
+enum Language {
+  ENGLISH
+  RUSSIAN
 }

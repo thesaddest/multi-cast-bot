@@ -1,9 +1,11 @@
 import { Injectable, Logger } from "@nestjs/common";
 import * as TelegramBot from "node-telegram-bot-api";
+import { Language } from "@prisma/client";
 import { UserManagementService } from "../services/user-management.service";
 import { TelegramApiService } from "../services/telegram-api.service";
 import { MessageService } from "../services/message.service";
 import { SubscriptionService } from "../../stripe/subscription.service";
+import { I18nService } from "../services/i18n.service";
 import { TelegramHandlerContext } from "../types/telegram.types";
 
 @Injectable()
@@ -15,7 +17,8 @@ export class CommandHandler {
     private telegramApiService: TelegramApiService,
     private messageService: MessageService,
     private subscriptionService: SubscriptionService,
-  ) {}
+    private i18nService: I18nService,
+  ) { }
 
   async handleStart(
     bot: TelegramBot,
@@ -39,12 +42,13 @@ export class CommandHandler {
       );
 
       if (user) {
+        const messages = await this.i18nService.getUserMessages(telegramUser.id.toString());
         await this.telegramApiService.sendMessage(
           bot,
           chatId,
-          `🎉 Welcome back, ${telegramUser.first_name}!\n\nYou're already registered in our system.`,
+          messages.messages.welcomeBack(telegramUser.first_name),
         );
-        await this.showMainMenu(bot, chatId);
+        await this.showMainMenu(bot, chatId, telegramUser.id.toString());
         return;
       }
 
@@ -54,20 +58,16 @@ export class CommandHandler {
           telegramUser,
         );
 
-      const welcomeMessage = `🚀 Welcome to Multi-Platform Bot, ${telegramUser.first_name}!
+      const messages = await this.i18nService.getUserMessages(telegramUser.id.toString());
 
-✅ Your account has been created successfully!
-🆔 User ID: ${user.id}
-📱 Connected Platform: Telegram
+      const welcomeMessage = `${messages.messages.welcome.title(telegramUser.first_name)}
 
-What you can do:
-• Connect other social platforms (Discord, Twitter, VK)
-• Send messages across all platforms
-• Schedule messages for later
-• Manage your channels and groups`;
+${messages.messages.welcome.description(user.id)}
+
+${messages.messages.welcome.features}`;
 
       await this.telegramApiService.sendMessage(bot, chatId, welcomeMessage);
-      await this.showMainMenu(bot, chatId);
+      await this.showMainMenu(bot, chatId, telegramUser.id.toString());
     } catch (error) {
       this.logger.error("Error creating user:", error);
       await this.telegramApiService.sendMessage(
@@ -78,16 +78,24 @@ What you can do:
     }
   }
 
-  async showMainMenu(bot: TelegramBot, chatId: number): Promise<void> {
-    const menuMessage = `🎛️ Main Menu
+  async showMainMenu(bot: TelegramBot, chatId: number, telegramUserId?: string): Promise<void> {
+    let messages;
+    if (telegramUserId) {
+      messages = await this.i18nService.getUserMessages(telegramUserId);
+    } else {
+      messages = this.i18nService.getMessages(Language.ENGLISH);
+    }
 
-Choose what you'd like to do:`;
+    const menuMessage = `${messages.messages.mainMenu.title}
+
+${messages.messages.mainMenu.description}`;
 
     const keyboard = this.telegramApiService.createReplyKeyboard(
       [
-        [{ text: "👤 Profile" }, { text: "📋 My Channels" }],
-        [{ text: "➕ Add Channel" }, { text: "📢 Send Message" }],
-        [{ text: "📜 Message History" }, { text: "📊 Statistics" }],
+        [{ text: messages.buttons.profile }, { text: messages.buttons.myChannels }],
+        [{ text: messages.buttons.addChannel }, { text: messages.buttons.sendMessage }],
+        [{ text: messages.buttons.messageHistory },],
+        [{ text: messages.buttons.changeLanguage }],
       ],
       {
         resize_keyboard: true,
@@ -108,6 +116,7 @@ Choose what you'd like to do:`;
     const { chatId, telegramUser } = context;
 
     try {
+      const messages = await this.i18nService.getUserMessages(telegramUser.id.toString());
       const user = await this.userManagementService.findUserWithStats(
         telegramUser.id.toString(),
       );
@@ -116,7 +125,7 @@ Choose what you'd like to do:`;
         await this.telegramApiService.sendMessage(
           bot,
           chatId,
-          "❌ User not found. Please use /start to create an account.",
+          messages.messages.errors.userNotFound,
         );
         return;
       }
@@ -134,32 +143,33 @@ Choose what you'd like to do:`;
 
       const subscriptionText =
         subscriptionInfo.subscriptionPlan === "PREMIUM"
-          ? `💎 Premium ($10/month) - Active`
-          : `🆓 Free Plan - ${subscriptionInfo.freeMessagesRemaining}/3 messages remaining`;
+          ? messages.messages.profile.premiumActive
+          : messages.messages.profile.freePlan(subscriptionInfo.freeMessagesRemaining);
 
-      const profileMessage = `👤 Your Profile
+      const profileMessage = `${messages.messages.profile.title}
 
-🆔 User ID: ${user.id}
-📧 Email: ${user.email || "Not set"}
-👤 Username: ${user.username || "Not set"}
-📅 Member since: ${user.createdAt.toDateString()}
+${messages.messages.profile.userId} ${user.id}
+${messages.messages.profile.email} ${user.email || "Not set"}
+${messages.messages.profile.username} ${user.username || "Not set"}
+${messages.messages.profile.memberSince} ${user.createdAt.toDateString()}
 
-💰 Subscription: ${subscriptionText}
+${messages.messages.profile.subscription} ${subscriptionText}
 
-🔗 Connected Platforms (${user.accounts.length}):
+${messages.messages.profile.connectedPlatforms(user.accounts.length)}
 ${platformList || "None"}
 
-📺 Active Channels: ${user.channels.length}
-📤 Messages Sent: ${subscriptionInfo.totalMessages}
-⏰ Scheduled Messages: ${user._count?.messageQueue || 0}`;
+${messages.messages.profile.activeChannels} ${user.channels.length}
+${messages.messages.profile.messagesSent} ${subscriptionInfo.totalMessages}
+${messages.messages.profile.scheduledMessages} ${user._count?.messageQueue || 0}`;
 
       await this.telegramApiService.sendMessage(bot, chatId, profileMessage);
     } catch (error) {
       this.logger.error("Error fetching profile:", error);
+      const messages = await this.i18nService.getUserMessages(telegramUser.id.toString());
       await this.telegramApiService.sendMessage(
         bot,
         chatId,
-        "❌ Error fetching your profile. Please try again.",
+        messages.messages.errors.profileError,
       );
     }
   }
@@ -171,6 +181,7 @@ ${platformList || "None"}
     const { chatId, telegramUser } = context;
 
     try {
+      const i18nMessages = await this.i18nService.getUserMessages(telegramUser.id.toString());
       const user = await this.userManagementService.findUserByTelegramId(
         telegramUser.id.toString(),
       );
@@ -178,7 +189,7 @@ ${platformList || "None"}
         await this.telegramApiService.sendMessage(
           bot,
           chatId,
-          "❌ User not found. Please use /start to create an account.",
+          i18nMessages.messages.errors.userNotFound,
         );
         return;
       }
@@ -189,14 +200,14 @@ ${platformList || "None"}
         await this.telegramApiService.sendMessage(
           bot,
           chatId,
-          "📭 No messages found.\n\nYou haven't sent any messages yet. Use '📢 Send Message' to broadcast your first message!",
+          `${i18nMessages.messages.messages.noMessages}\n\n${i18nMessages.messages.messages.noMessagesDescription}`,
         );
         return;
       }
 
       const messageList = messages
         .map((msg, index) => {
-          const status = this.getStatusEmoji(msg.status);
+          const status = this.getStatusEmoji(msg.status, i18nMessages);
           const type = this.getMessageTypeEmoji(msg.messageType);
           const date = msg.sentAt
             ? msg.sentAt.toLocaleDateString()
@@ -205,46 +216,129 @@ ${platformList || "None"}
             msg.content.length > 50
               ? msg.content.substring(0, 50) + "..."
               : msg.content;
-          const channelTitle = (msg as any).channel?.title || "Unknown Channel";
+          const channelTitle = (msg as any).channel?.title || i18nMessages.messages.general.unknown;
 
           return `${index + 1}. ${status} ${type} ${channelTitle}\n   "${content}"\n   📅 ${date}`;
         })
         .join("\n\n");
 
-      const historyMessage = `📜 Message History (Last 10)
+      const historyMessage = `${i18nMessages.messages.messages.historyLast(10)}
 
 ${messageList}
 
-Legend:
-✅ Sent  ❌ Failed  ⏳ Pending  📤 Scheduled
+${i18nMessages.messages.general.messageHistoryLegend}
 
-Use /messages_detailed for more information about specific messages.`;
+${i18nMessages.messages.general.detailedMessagesHint}`;
 
       await this.telegramApiService.sendMessage(bot, chatId, historyMessage);
     } catch (error) {
       this.logger.error("Error fetching message history:", error);
+      const messages = await this.i18nService.getUserMessages(telegramUser.id.toString());
       await this.telegramApiService.sendMessage(
         bot,
         chatId,
-        "❌ Error fetching message history. Please try again.",
+        messages.messages.errors.generalError,
       );
     }
   }
 
-  private getStatusEmoji(status: string): string {
+  async handleLanguageSettings(
+    bot: TelegramBot,
+    context: TelegramHandlerContext,
+  ): Promise<void> {
+    const { chatId, telegramUser } = context;
+
+    try {
+      const messages = await this.i18nService.getUserMessages(telegramUser.id.toString());
+      const userLanguage = await this.i18nService.getUserLanguage(telegramUser.id.toString());
+      const languageName = this.i18nService.getLanguageName(userLanguage, userLanguage);
+
+      const languageMessage = `${messages.messages.language.title}
+
+${messages.messages.language.description}
+
+${messages.messages.language.current(languageName)}`;
+
+      const inlineKeyboard = {
+        inline_keyboard: [
+          [
+            { text: messages.buttons.english, callback_data: "lang_ENGLISH" },
+            { text: messages.buttons.russian, callback_data: "lang_RUSSIAN" },
+          ],
+          [
+            { text: messages.buttons.back, callback_data: "back_to_menu" },
+          ],
+        ],
+      };
+
+      await this.telegramApiService.sendMessage(bot, chatId, languageMessage, {
+        reply_markup: inlineKeyboard,
+      });
+    } catch (error) {
+      this.logger.error("Error showing language settings:", error);
+      const messages = await this.i18nService.getUserMessages(telegramUser.id.toString());
+      await this.telegramApiService.sendMessage(
+        bot,
+        chatId,
+        messages.messages.errors.generalError,
+      );
+    }
+  }
+
+  async handleLanguageChange(
+    bot: TelegramBot,
+    chatId: number,
+    telegramUserId: string,
+    newLanguage: Language,
+  ): Promise<void> {
+    try {
+      const success = await this.i18nService.updateUserLanguage(telegramUserId, newLanguage);
+
+      if (success) {
+        const messages = this.i18nService.getMessages(newLanguage);
+        const languageName = this.i18nService.getLanguageName(newLanguage, newLanguage);
+
+        await this.telegramApiService.sendMessage(
+          bot,
+          chatId,
+          messages.messages.language.changed(languageName),
+        );
+
+        // Show updated main menu with new language
+        await this.showMainMenu(bot, chatId, telegramUserId);
+      } else {
+        const messages = await this.i18nService.getUserMessages(telegramUserId);
+        await this.telegramApiService.sendMessage(
+          bot,
+          chatId,
+          messages.messages.errors.languageError,
+        );
+      }
+    } catch (error) {
+      this.logger.error("Error changing language:", error);
+      const messages = await this.i18nService.getUserMessages(telegramUserId);
+      await this.telegramApiService.sendMessage(
+        bot,
+        chatId,
+        messages.messages.errors.languageError,
+      );
+    }
+  }
+
+  private getStatusEmoji(status: string, messages: any): string {
     switch (status) {
       case "SENT":
-        return "✅";
+        return messages.messages.general.sent;
       case "FAILED":
-        return "❌";
+        return messages.messages.general.failed;
       case "PENDING":
-        return "⏳";
+        return messages.messages.general.pending;
       case "SCHEDULED":
-        return "📤";
+        return messages.messages.general.scheduled;
       case "CANCELLED":
-        return "🚫";
+        return messages.messages.general.cancelledStatus;
       default:
-        return "❓";
+        return messages.messages.general.unknownStatus;
     }
   }
 
@@ -280,6 +374,9 @@ Use /messages_detailed for more information about specific messages.`;
     const { chatId, telegramUser } = context;
 
     try {
+      const userLanguage = await this.i18nService.getUserLanguage(telegramUser.id.toString());
+      const messages = this.i18nService.getMessages(userLanguage);
+      
       const user = await this.userManagementService.findUserByTelegramId(
         telegramUser.id.toString(),
       );
@@ -287,7 +384,7 @@ Use /messages_detailed for more information about specific messages.`;
         await this.telegramApiService.sendMessage(
           bot,
           chatId,
-          "❌ User not found. Please use /start to create an account.",
+          messages.messages.errors.userNotFound,
         );
         return;
       }
@@ -299,46 +396,46 @@ Use /messages_detailed for more information about specific messages.`;
         await this.telegramApiService.sendMessage(
           bot,
           chatId,
-          `💎 Premium Subscription Active!
+          `${messages.messages.subscription.premiumActive}
 
-You already have an active premium subscription.
+${messages.messages.subscription.alreadyActive}
 
-📊 Your Stats:
-• Total messages sent: ${subscriptionInfo.totalMessages}
-• Subscription status: ${subscriptionInfo.subscriptionStatus}
+${messages.messages.subscription.yourStats}
+${messages.messages.subscription.totalMessages(subscriptionInfo.totalMessages)}
+${messages.messages.subscription.subscriptionStatus(subscriptionInfo.subscriptionStatus)}
 
-Use /cancel_subscription if you want to cancel your subscription.`,
+${messages.messages.subscription.useCancelCommand}`,
         );
         return;
       }
 
-      const subscribeMessage = `💎 Upgrade to Premium
+      const subscribeMessage = `${messages.messages.subscription.upgradeTitle}
 
-🆓 Your Free Plan:
-• Free messages used: ${subscriptionInfo.freeMessagesUsed}/3
-• Remaining: ${subscriptionInfo.freeMessagesRemaining}
+${messages.messages.subscription.yourFreePlan}
+${messages.messages.subscription.freeUsed(subscriptionInfo.freeMessagesUsed, 3)}
+${messages.messages.subscription.remaining(subscriptionInfo.freeMessagesRemaining)}
 
-💎 Premium Plan - $10/month:
-• ✅ Unlimited messages
-• ✅ Priority support
-• ✅ Advanced scheduling
-• ✅ Analytics dashboard
-• ✅ Custom branding
+${messages.messages.subscription.premiumPlan}
+${messages.messages.subscription.unlimitedMessages}
+${messages.messages.subscription.prioritySupport}
+${messages.messages.subscription.advancedScheduling}
+${messages.messages.subscription.analyticsDashboard}
+${messages.messages.subscription.customBranding}
 
-Click the button below to upgrade:`;
+${messages.messages.subscription.clickToUpgrade}`;
 
       const keyboard = {
         inline_keyboard: [
           [
             {
-              text: "💎 Upgrade to Premium",
+              text: messages.messages.subscription.upgradeToPremium,
               callback_data: "upgrade_premium",
             },
           ],
           [
             {
-              text: "❌ Cancel",
-              callback_data: "cancel_subscription_flow",
+              text: messages.buttons.back,
+              callback_data: "back_to_menu",
             },
           ],
         ],
@@ -349,10 +446,13 @@ Click the button below to upgrade:`;
       });
     } catch (error) {
       this.logger.error("Error handling subscribe command:", error);
+      const userLanguage = await this.i18nService.getUserLanguage(telegramUser.id.toString());
+      const messages = this.i18nService.getMessages(userLanguage);
+      
       await this.telegramApiService.sendMessage(
         bot,
         chatId,
-        "❌ Error loading subscription information. Please try again.",
+        messages.messages.errors.generalError,
       );
     }
   }
@@ -364,6 +464,9 @@ Click the button below to upgrade:`;
     const { chatId, telegramUser } = context;
 
     try {
+      const userLanguage = await this.i18nService.getUserLanguage(telegramUser.id.toString());
+      const messages = this.i18nService.getMessages(userLanguage);
+      
       const user = await this.userManagementService.findUserByTelegramId(
         telegramUser.id.toString(),
       );
@@ -371,7 +474,7 @@ Click the button below to upgrade:`;
         await this.telegramApiService.sendMessage(
           bot,
           chatId,
-          "❌ User not found. Please use /start to create an account.",
+          messages.messages.errors.userNotFound,
         );
         return;
       }
@@ -383,38 +486,38 @@ Click the button below to upgrade:`;
         await this.telegramApiService.sendMessage(
           bot,
           chatId,
-          "❌ You don't have an active premium subscription to cancel.",
+          messages.messages.subscription.noPremiumToCancel,
         );
         return;
       }
 
-      const cancelMessage = `🚫 Cancel Premium Subscription
+      const cancelMessage = `${messages.messages.subscription.cancelTitle}
 
-Are you sure you want to cancel your premium subscription?
+${messages.messages.subscription.cancelConfirmation}
 
-❌ You will lose:
-• Unlimited messages
-• Priority support
-• Advanced features
+${messages.messages.subscription.willLose}
+${messages.messages.subscription.unlimitedMessages}
+${messages.messages.subscription.prioritySupport}
+${messages.messages.subscription.advancedScheduling}
 
-✅ You will keep:
-• 3 free messages per month
-• Basic functionality
-• Your data and channels
+${messages.messages.subscription.willKeep}
+${messages.messages.subscription.freeMessages}
+${messages.messages.subscription.basicFunctionality}
+${messages.messages.subscription.dataAndChannels}
 
-Your subscription will remain active until the end of the current billing period.`;
+${messages.messages.subscription.remainsActive}`;
 
       const keyboard = {
         inline_keyboard: [
           [
             {
-              text: "🚫 Yes, Cancel Subscription",
+              text: messages.messages.subscription.yesCancelSubscription,
               callback_data: "confirm_cancel_subscription",
             },
           ],
           [
             {
-              text: "❌ No, Keep Premium",
+              text: messages.messages.subscription.noKeepPremium,
               callback_data: "keep_subscription",
             },
           ],
@@ -426,10 +529,13 @@ Your subscription will remain active until the end of the current billing period
       });
     } catch (error) {
       this.logger.error("Error handling cancel subscription command:", error);
+      const userLanguage = await this.i18nService.getUserLanguage(telegramUser.id.toString());
+      const messages = this.i18nService.getMessages(userLanguage);
+      
       await this.telegramApiService.sendMessage(
         bot,
         chatId,
-        "❌ Error loading subscription information. Please try again.",
+        messages.messages.errors.generalError,
       );
     }
   }

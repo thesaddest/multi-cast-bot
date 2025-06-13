@@ -8,6 +8,7 @@ import { UserManagementService } from "./services/user-management.service";
 import { ChannelManagementService } from "./services/channel-management.service";
 import { TelegramApiService } from "./services/telegram-api.service";
 import { MessageService } from "./services/message.service";
+import { I18nService } from "./services/i18n.service";
 import { SubscriptionService } from "../stripe/subscription.service";
 import { StripeService } from "../stripe/stripe.service";
 
@@ -29,6 +30,7 @@ import { BroadcastHandler } from "./handlers/broadcast.handler";
     ChannelManagementService,
     TelegramApiService,
     MessageService,
+    I18nService,
     SubscriptionService,
     StripeService,
     // Handlers

@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { DbService } from "../../db/db.service";
 import { Platform, ChannelType, Channel } from "@prisma/client";
 import { CreateChannelData } from "../types/telegram.types";
+import { I18nMessages } from "../constants/messages";
 
 @Injectable()
 export class ChannelManagementService {
@@ -141,7 +142,23 @@ export class ChannelManagementService {
     }
   }
 
-  getChannelTypeDisplay(type: ChannelType): string {
+  getChannelTypeDisplay(type: ChannelType, messages?: I18nMessages): string {
+    if (messages) {
+      switch (type) {
+        case ChannelType.PRIVATE:
+          return messages.messages.channels.channelTypes.PRIVATE;
+        case ChannelType.GROUP:
+          return messages.messages.channels.channelTypes.GROUP;
+        case ChannelType.SUPERGROUP:
+          return messages.messages.channels.channelTypes.SUPERGROUP;
+        case ChannelType.CHANNEL:
+          return messages.messages.channels.channelTypes.CHANNEL;
+        default:
+          return "❓ Unknown";
+      }
+    }
+    
+    // Fallback for backward compatibility
     switch (type) {
       case ChannelType.PRIVATE:
         return "👤 Private Chat";
@@ -156,7 +173,7 @@ export class ChannelManagementService {
     }
   }
 
-  formatChannelsList(channels: Channel[]): string {
+  formatChannelsList(channels: Channel[], messages?: I18nMessages): string {
     return channels
       .map((channel, index) => {
         let statusIcon;
@@ -168,7 +185,7 @@ export class ChannelManagementService {
           statusIcon = "⚠️"; // Active but limited permissions
         }
 
-        const typeDisplay = this.getChannelTypeDisplay(channel.type);
+        const typeDisplay = this.getChannelTypeDisplay(channel.type, messages);
         const memberInfo = channel.memberCount
           ? ` (${channel.memberCount} members)`
           : "";

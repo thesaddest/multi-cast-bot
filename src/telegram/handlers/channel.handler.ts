@@ -4,6 +4,7 @@ import { Channel, ChannelType } from "@prisma/client";
 import { UserManagementService } from "../services/user-management.service";
 import { ChannelManagementService } from "../services/channel-management.service";
 import { TelegramApiService } from "../services/telegram-api.service";
+import { I18nService } from "../services/i18n.service";
 import {
   TelegramHandlerContext,
   TelegramUserWithChannels,
@@ -18,6 +19,7 @@ export class ChannelHandler {
     private userManagementService: UserManagementService,
     private channelManagementService: ChannelManagementService,
     private telegramApiService: TelegramApiService,
+    private i18nService: I18nService,
   ) {}
 
   async handleChannelsList(
@@ -27,6 +29,7 @@ export class ChannelHandler {
     const { chatId, telegramUser } = context;
 
     try {
+      const messages = await this.i18nService.getUserMessages(telegramUser.id.toString());
       const user = await this.userManagementService.findUserByTelegramId(
         telegramUser.id.toString(),
       );
@@ -34,7 +37,7 @@ export class ChannelHandler {
         await this.telegramApiService.sendMessage(
           bot,
           chatId,
-          "❌ User not found. Please use /start to create an account.",
+          messages.messages.errors.userNotFound,
         );
         return;
       }
@@ -44,35 +47,36 @@ export class ChannelHandler {
       );
 
       if (channels.length === 0) {
-        await this.showNoChannelsMessage(bot, chatId);
+        await this.showNoChannelsMessage(bot, chatId, telegramUser.id.toString());
         return;
       }
 
       const channelsList =
-        this.channelManagementService.formatChannelsList(channels);
-      const channelsMessage = `📋 My Channels (${channels.length})
+        this.channelManagementService.formatChannelsList(channels, messages);
+      const channelsMessage = `${messages.messages.channels.title(channels.length)}
 
 ${channelsList}
 
-Legend:
-✅ - Active and ready to broadcast
-⚠️ - Active but limited permissions
-🔴 - Inactive (won't receive broadcasts)
+${messages.messages.channels.legend.title}
+${messages.messages.channels.legend.active}
+${messages.messages.channels.legend.limited}
+${messages.messages.channels.legend.inactive}
 
-Use the buttons below to manage your channels.`;
+${messages.messages.channels.management}`;
 
       // Create inline keyboard for channel management
-      const keyboard = this.createChannelManagementKeyboard(channels);
+      const keyboard = this.createChannelManagementKeyboard(channels, messages);
 
       await this.telegramApiService.sendMessage(bot, chatId, channelsMessage, {
         reply_markup: this.telegramApiService.createInlineKeyboard(keyboard),
       });
     } catch (error) {
       this.logger.error("Error fetching channels list:", error);
+      const messages = await this.i18nService.getUserMessages(telegramUser.id.toString());
       await this.telegramApiService.sendMessage(
         bot,
         chatId,
-        "❌ Error fetching your channels. Please try again.",
+        messages.messages.errors.generalError,
       );
     }
   }
@@ -81,27 +85,27 @@ Use the buttons below to manage your channels.`;
     bot: TelegramBot,
     context: TelegramHandlerContext,
   ): Promise<void> {
-    const { chatId } = context;
+    const { chatId, telegramUser } = context;
+    const messages = await this.i18nService.getUserMessages(telegramUser.id.toString());
 
-    const instructionsMessage = `➕ Add Channel/Group
+    const instructionsMessage = `${messages.buttons.addChannel}
 
-Method 1: Auto-Detection (Recommended)
-1. Add this bot to your channel/group
-2. Make sure the bot has admin permissions
-3. The bot will automatically detect and add the channel
+${messages.messages.channels.addInstructions.method1Title}
+1. ${messages.messages.channels.addInstructions.method1Step1}
+2. ${messages.messages.channels.addInstructions.method1Step2}
+3. ${messages.messages.channels.addInstructions.method1Step3}
 
-Method 2: Manual Addition
-Send me the channel username in this format:
-@channelname
+${messages.messages.channels.addInstructions.method2Title}
+${messages.messages.channels.addInstructions.method2Format}
 
-Examples:
-• @mychannel - for public channels
-• @mygroup - for public groups
+${messages.messages.channels.addInstructions.examples}
+• ${messages.messages.channels.addInstructions.exampleChannel}
+• ${messages.messages.channels.addInstructions.exampleGroup}
 
-Note: For private channels/groups, use Method 1 (auto-detection) by adding the bot directly.`;
+${messages.messages.channels.addInstructions.note}`;
 
     const keyboard = [
-      [{ text: "📋 My Channels", callback_data: "channels_list" }],
+      [{ text: messages.buttons.myChannels, callback_data: "channels_list" }],
     ];
 
     await this.telegramApiService.sendMessage(
@@ -126,18 +130,20 @@ Note: For private channels/groups, use Method 1 (auto-detection) by adding the b
         telegramUser.id.toString(),
       );
       if (!user) {
+        const messages = await this.i18nService.getUserMessages(telegramUser.id.toString());
         await this.telegramApiService.sendMessage(
           bot,
           chatId,
-          "❌ User not found. Please use /start to create an account.",
+          messages.messages.errors.userNotFound,
         );
         return;
       }
 
+      const messages = await this.i18nService.getUserMessages(telegramUser.id.toString());
       await this.telegramApiService.sendMessage(
         bot,
         chatId,
-        "🔍 Checking channel... Please wait.",
+        messages.messages.channels.checking,
       );
 
       // Try to get chat info
@@ -148,10 +154,10 @@ Note: For private channels/groups, use Method 1 (auto-detection) by adding the b
         await this.telegramApiService.sendMessage(
           bot,
           chatId,
-          `❌ Channel @${username} not found or not accessible. Make sure:
-• The channel is public
-• The username is correct
-• The bot has access to the channel`,
+          `${messages.messages.channelAddition.notFoundError(username)}
+• ${messages.messages.channelAddition.channelPublic}
+• ${messages.messages.channelAddition.usernameCorrect}
+• ${messages.messages.channelAddition.botHasAccess}`,
         );
         return;
       }
@@ -167,7 +173,7 @@ Note: For private channels/groups, use Method 1 (auto-detection) by adding the b
         await this.telegramApiService.sendMessage(
           bot,
           chatId,
-          `✅ Channel "${chat.title}" is already in your list!`,
+          messages.messages.channelAddition.alreadyInList(chat.title || username),
         );
         return;
       }
@@ -180,9 +186,9 @@ Note: For private channels/groups, use Method 1 (auto-detection) by adding the b
         await this.telegramApiService.sendMessage(
           bot,
           chatId,
-          `⚠️ Found channel "${chat.title}", but the bot is not an admin.
+          `${messages.messages.channelAddition.foundButNotAdmin(chat.title || username)}
 
-Please add the bot as an administrator to this channel, then try again.`,
+${messages.messages.channelAddition.addAsAdmin}`,
         );
         return;
       }
@@ -212,18 +218,18 @@ Please add the bot as an administrator to this channel, then try again.`,
         },
       });
 
-      const successMessage = `✅ Channel Added Successfully!
+      const successMessage = `${messages.messages.channels.addedSuccessfully}
 
 📺 ${channel.title}
-🆔 Type: ${this.channelManagementService.getChannelTypeDisplay(channelType)}
-👥 Members: ${memberCount || "Unknown"}
-🔗 Username: @${username}
-${canPost ? "✅ Ready for broadcasting" : "⚠️ Limited posting permissions"}
+${messages.messages.channels.channelInfo.type} ${this.channelManagementService.getChannelTypeDisplay(channelType, messages)}
+${messages.messages.channels.channelInfo.members} ${memberCount || "Unknown"}
+${messages.messages.channels.channelInfo.username} @${username}
+${canPost ? messages.messages.channels.channelInfo.readyForBroadcasting : "⚠️ Limited posting permissions"}
 
-You can now send messages to this channel!`;
+${messages.messages.channels.channelInfo.canSendMessages}`;
 
       const keyboard = [
-        [{ text: "📋 View All Channels", callback_data: "channels_list" }],
+        [{ text: messages.messages.channels.viewAll, callback_data: "channels_list" }],
       ];
 
       await this.telegramApiService.sendMessage(bot, chatId, successMessage, {
@@ -231,10 +237,11 @@ You can now send messages to this channel!`;
       });
     } catch (error) {
       this.logger.error("Error adding channel by username:", error);
+      const messages = await this.i18nService.getUserMessages(telegramUser.id.toString());
       await this.telegramApiService.sendMessage(
         bot,
         chatId,
-        "❌ An error occurred while adding the channel. Please try again.",
+        messages.messages.errors.generalError,
       );
     }
   }
@@ -318,20 +325,20 @@ You can now send messages to this channel!`;
   private async showNoChannelsMessage(
     bot: TelegramBot,
     chatId: number,
+    telegramUserId: string,
   ): Promise<void> {
-    const noChannelsMessage = `📋 My Channels
+    const messages = await this.i18nService.getUserMessages(telegramUserId);
+    const noChannelsMessage = `${messages.messages.channels.title()}
 
-You haven't connected any channels yet!
+${messages.messages.channels.noChannels}
 
-How to add channels:
-1. Add this bot to your channel/group as an admin
-2. Or use /add_channel and send the channel username
-3. Or click "➕ Add Channel" button below
+${messages.messages.channels.howToAdd}
+${messages.messages.channels.instructions}
 
-The bot will automatically detect when you add it to channels.`;
+${messages.messages.channels.autoDetect}`;
 
     const keyboard = [
-      [{ text: "➕ Add Channel", callback_data: "add_channel" }],
+      [{ text: messages.buttons.addChannel, callback_data: "add_channel" }],
     ];
 
     await this.telegramApiService.sendMessage(bot, chatId, noChannelsMessage, {
@@ -341,6 +348,7 @@ The bot will automatically detect when you add it to channels.`;
 
   private createChannelManagementKeyboard(
     channels: Channel[],
+    messages: any,
   ): TelegramBot.InlineKeyboardButton[][] {
     const keyboard = [];
 
@@ -370,8 +378,8 @@ The bot will automatically detect when you add it to channels.`;
 
     // Add action buttons
     keyboard.push([
-      { text: "➕ Add Channel", callback_data: "add_channel" },
-      { text: "🔄 Refresh", callback_data: "refresh_channels" },
+      { text: messages.buttons.addChannel, callback_data: "add_channel" },
+      { text: `🔄 ${messages.messages.channels.refresh}`, callback_data: "refresh_channels" },
     ]);
 
     return keyboard;

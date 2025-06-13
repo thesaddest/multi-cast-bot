@@ -59,7 +59,7 @@ export class TelegramService implements OnModuleInit {
       this.handleCommand.bind(this, "cancel_subscription"),
     );
 
-    // Button text handlers
+    // Button text handlers (English)
     this.bot.onText(/^👤 Profile$/, this.handleCommand.bind(this, "profile"));
     this.bot.onText(
       /^📋 My Channels$/,
@@ -78,8 +78,31 @@ export class TelegramService implements OnModuleInit {
       this.handleCommand.bind(this, "messages"),
     );
     this.bot.onText(
-      /^📊 Statistics$/,
-      this.handleCommand.bind(this, "statistics"),
+      /^🌐 Language$/,
+      this.handleCommand.bind(this, "language"),
+    );
+
+    // Button text handlers (Russian)
+    this.bot.onText(/^👤 Профиль$/, this.handleCommand.bind(this, "profile"));
+    this.bot.onText(
+      /^📋 Мои каналы$/,
+      this.handleCommand.bind(this, "channels"),
+    );
+    this.bot.onText(
+      /^➕ Добавить канал$/,
+      this.handleCommand.bind(this, "add_channel"),
+    );
+    this.bot.onText(
+      /^📢 Отправить сообщение$/,
+      this.handleCommand.bind(this, "broadcast"),
+    );
+    this.bot.onText(
+      /^📜 История сообщений$/,
+      this.handleCommand.bind(this, "messages"),
+    );
+    this.bot.onText(
+      /^🌐 Язык$/,
+      this.handleCommand.bind(this, "language"),
     );
 
     // Channel username input handler
@@ -139,14 +162,10 @@ export class TelegramService implements OnModuleInit {
           await this.commandHandler.handleMessageHistory(this.bot, context);
           break;
         case "menu":
-          await this.commandHandler.showMainMenu(this.bot, context.chatId);
+          await this.commandHandler.showMainMenu(this.bot, context.chatId, context.telegramUser.id.toString());
           break;
-        case "statistics":
-          await this.telegramApiService.sendMessage(
-            this.bot,
-            context.chatId,
-            "📊 Statistics feature coming soon!",
-          );
+        case "language":
+          await this.commandHandler.handleLanguageSettings(this.bot, context);
           break;
         case "subscribe":
           await this.commandHandler.handleSubscribe(this.bot, context);
@@ -276,7 +295,6 @@ export class TelegramService implements OnModuleInit {
       msg.text === "➕ Add Channel" ||
       msg.text === "📢 Send Message" ||
       msg.text === "📜 Message History" ||
-      msg.text === "📊 Statistics" ||
       msg.text?.startsWith("@")
     ) {
       return;
