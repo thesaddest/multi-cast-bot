@@ -14,6 +14,7 @@ interface BroadcastSession {
   messageType: MessageType;
   mediaUrls?: string[];
   mediaTypes?: string[];
+  originalMessage?: TelegramBot.Message; // Store original message for media processing
   step: 'waiting_message' | 'confirming' | 'broadcasting';
 }
 
@@ -90,6 +91,7 @@ ${channelList}
 
 💡 Tips:
 • You can send text, photos, videos, or documents
+• Media files will be posted natively (not forwarded)
 • Use formatting: *bold*, _italic_, \`code\`
 • Type /cancel to cancel broadcasting`,
         { parse_mode: 'Markdown' }
@@ -131,6 +133,7 @@ ${channelList}
       session.messageType = this.detectMessageType(msg);
       session.mediaUrls = this.extractMediaUrls(msg);
       session.mediaTypes = this.extractMediaTypes(msg);
+      session.originalMessage = msg; // Store for native message sending
       session.step = 'confirming';
 
       // Get user's active channels for confirmation
@@ -255,21 +258,8 @@ Are you sure you want to broadcast this message?`;
           });
 
           let sentMessage;
-          if (session.messageId) {
-            // Forward the original message
-            sentMessage = await bot.forwardMessage(
-              parseInt(channel.platformId),
-              chatId,
-              session.messageId
-            );
-          } else {
-            // Send as text
-            sentMessage = await this.telegramApiService.sendMessage(
-              bot,
-              parseInt(channel.platformId),
-              session.message
-            );
-          }
+          // Send native message instead of forwarding
+          sentMessage = await this.sendNativeMessage(bot, channel, session, chatId);
 
           // Update message record as sent
           await this.messageService.markMessageAsSent(dbMessage.id, sentMessage.message_id.toString());
@@ -411,6 +401,103 @@ ${failureCount > 0 ? '\n💡 Failed channels may have restricted bot permissions
     if (msg.sticker) types.push('sticker');
     
     return types;
+  }
+
+  private async sendNativeMessage(
+    bot: TelegramBot, 
+    channel: any, 
+    session: BroadcastSession, 
+    originalChatId: number
+  ): Promise<TelegramBot.Message> {
+    const channelId = parseInt(channel.platformId);
+    
+    // If there's no original message or media, send as text
+    if (!session.originalMessage || session.messageType === MessageType.TEXT) {
+      return await this.telegramApiService.sendMessage(
+        bot,
+        channelId,
+        session.message
+      );
+    }
+
+    // For media messages, send native versions instead of forwarding
+    try {
+      return await this.sendMessageByType(bot, channelId, session);
+    } catch (error) {
+      this.logger.warn(`Failed to send native message, falling back to text: ${error.message}`);
+      // Fallback to text message
+      return await this.telegramApiService.sendMessage(
+        bot,
+        channelId,
+        session.message
+      );
+    }
+  }
+
+
+
+  private async sendMessageByType(
+    bot: TelegramBot,
+    channelId: number,
+    session: BroadcastSession
+  ): Promise<TelegramBot.Message> {
+    const messageText = session.message !== '[Media message]' ? session.message : undefined;
+    
+    // Send based on message type
+    switch (session.messageType) {
+      case MessageType.PHOTO:
+        if (session.mediaUrls && session.mediaUrls.length > 0) {
+          return await bot.sendPhoto(channelId, session.mediaUrls[0], {
+            caption: messageText
+          });
+        }
+        break;
+        
+      case MessageType.VIDEO:
+        if (session.mediaUrls && session.mediaUrls.length > 0) {
+          return await bot.sendVideo(channelId, session.mediaUrls[0], {
+            caption: messageText
+          });
+        }
+        break;
+        
+      case MessageType.DOCUMENT:
+        if (session.mediaUrls && session.mediaUrls.length > 0) {
+          return await bot.sendDocument(channelId, session.mediaUrls[0], {
+            caption: messageText
+          });
+        }
+        break;
+        
+      case MessageType.AUDIO:
+        if (session.mediaUrls && session.mediaUrls.length > 0) {
+          return await bot.sendAudio(channelId, session.mediaUrls[0], {
+            caption: messageText
+          });
+        }
+        break;
+        
+      case MessageType.GIF:
+        if (session.mediaUrls && session.mediaUrls.length > 0) {
+          return await bot.sendAnimation(channelId, session.mediaUrls[0], {
+            caption: messageText
+          });
+        }
+        break;
+        
+      case MessageType.STICKER:
+        if (session.mediaUrls && session.mediaUrls.length > 0) {
+          return await bot.sendSticker(channelId, session.mediaUrls[0]);
+        }
+        break;
+        
+      default:
+        // Fallback to text for any unhandled types
+        return await this.telegramApiService.sendMessage(bot, channelId, session.message);
+    }
+    
+    // If we get here, something went wrong, send as text
+    return await this.telegramApiService.sendMessage(bot, channelId, session.message);
   }
 
   // Check if user has an active broadcast session
