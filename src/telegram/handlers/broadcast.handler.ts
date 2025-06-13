@@ -15,6 +15,8 @@ interface BroadcastSession {
   mediaUrls?: string[];
   mediaTypes?: string[];
   originalMessage?: TelegramBot.Message; // Store original message for media processing
+  mediaGroupId?: string; // For handling media groups (albums)
+  mediaGroupMessages?: TelegramBot.Message[]; // Store all messages in media group
   step: "waiting_message" | "confirming" | "broadcasting";
 }
 
@@ -141,7 +143,13 @@ ${channelList}
         return;
       }
 
-      // Store the message and detect type
+      // Check if this is part of a media group (album)
+      if (msg.media_group_id) {
+        await this.handleMediaGroupMessage(bot, msg, session, chatId);
+        return;
+      }
+
+      // Store the message and detect type for single messages
       session.message = this.extractMessageContent(msg);
       session.messageId = msg.message_id;
       session.messageType = this.detectMessageType(msg);
@@ -150,47 +158,8 @@ ${channelList}
       session.originalMessage = msg; // Store for native message sending
       session.step = "confirming";
 
-      // Get user's active channels for confirmation
-      const channels = await this.channelManagementService.getUserChannels(
-        session.userId,
-      );
-      const activeChannels = channels.filter(
-        (channel) => channel.isActive && channel.canPost,
-      );
-
-      const channelList = activeChannels
-        .map(
-          (channel, index) =>
-            `${index + 1}. ${channel.title} ${this.getChannelTypeEmoji(channel.type)}`,
-        )
-        .join("\n");
-
-      const confirmationMessage = `📢 Confirm Broadcast
-
-Your message will be sent to ${activeChannels.length} channel(s):
-
-${channelList}
-
-📝 Message Preview:
-${session.message.length > 200 ? session.message.substring(0, 200) + "..." : session.message}
-
-Are you sure you want to broadcast this message?`;
-
-      const keyboard: TelegramBot.InlineKeyboardMarkup = {
-        inline_keyboard: [
-          [
-            { text: "✅ Send to All", callback_data: "broadcast_confirm" },
-            { text: "❌ Cancel", callback_data: "broadcast_cancel" },
-          ],
-        ],
-      };
-
-      await this.telegramApiService.sendMessage(
-        bot,
-        chatId,
-        confirmationMessage,
-        { reply_markup: keyboard },
-      );
+      // Show confirmation for single messages
+      await this.showBroadcastConfirmation(bot, session, chatId);
     } catch (error) {
       this.logger.error("Error handling broadcast message:", error);
       await this.telegramApiService.sendMessage(
@@ -354,6 +323,130 @@ ${failureCount > 0 ? "\n💡 Failed channels may have restricted bot permissions
     }
   }
 
+  private async handleMediaGroupMessage(
+    bot: TelegramBot,
+    msg: TelegramBot.Message,
+    session: BroadcastSession,
+    chatId: number,
+  ): Promise<void> {
+    // Initialize media group handling if this is the first message
+    if (!session.mediaGroupId) {
+      session.mediaGroupId = msg.media_group_id;
+      session.mediaGroupMessages = [msg];
+      session.message = this.extractMessageContent(msg);
+      session.messageType = this.detectMessageType(msg);
+
+      // Wait for more messages in the group (Telegram sends them quickly)
+      setTimeout(async () => {
+        await this.processMediaGroup(bot, session, chatId);
+      }, 1000); // Wait 1 second for all messages in the group
+
+      return;
+    }
+
+    // Add to existing media group if same group ID
+    if (session.mediaGroupId === msg.media_group_id) {
+      session.mediaGroupMessages!.push(msg);
+      // Update message content if this message has caption and previous didn't
+      if (msg.caption && !session.message) {
+        session.message = msg.caption;
+      }
+    }
+  }
+
+  private async processMediaGroup(
+    bot: TelegramBot,
+    session: BroadcastSession,
+    chatId: number,
+  ): Promise<void> {
+    if (
+      !session.mediaGroupMessages ||
+      session.mediaGroupMessages.length === 0
+    ) {
+      return;
+    }
+
+    // Extract all media URLs and types from the group
+    session.mediaUrls = [];
+    session.mediaTypes = [];
+
+    for (const groupMsg of session.mediaGroupMessages) {
+      const urls = this.extractMediaUrls(groupMsg);
+      const types = this.extractMediaTypes(groupMsg);
+      session.mediaUrls.push(...urls);
+      session.mediaTypes.push(...types);
+    }
+
+    // Set message type based on the first media item
+    session.messageType = this.detectMessageType(session.mediaGroupMessages[0]);
+    session.originalMessage = session.mediaGroupMessages[0];
+    session.step = "confirming";
+
+    // Show confirmation
+    await this.showBroadcastConfirmation(bot, session, chatId);
+  }
+
+  private async showBroadcastConfirmation(
+    bot: TelegramBot,
+    session: BroadcastSession,
+    chatId: number,
+  ): Promise<void> {
+    // Get user's active channels for confirmation
+    const channels = await this.channelManagementService.getUserChannels(
+      session.userId,
+    );
+    const activeChannels = channels.filter(
+      (channel) => channel.isActive && channel.canPost,
+    );
+
+    const channelList = activeChannels
+      .map(
+        (channel, index) =>
+          `${index + 1}. ${channel.title} ${this.getChannelTypeEmoji(channel.type)}`,
+      )
+      .join("\n");
+
+    const mediaInfo =
+      session.mediaUrls && session.mediaUrls.length > 1
+        ? `\n📎 Media: ${session.mediaUrls.length} files (${session.mediaTypes?.join(", ")})`
+        : session.mediaUrls && session.mediaUrls.length === 1
+          ? `\n📎 Media: 1 ${session.mediaTypes?.[0] || "file"}`
+          : "";
+
+    const messagePreview = session.message
+      ? session.message.length > 200
+        ? session.message.substring(0, 200) + "..."
+        : session.message
+      : "[Media message]";
+
+    const confirmationMessage = `📢 Confirm Broadcast
+
+Your message will be sent to ${activeChannels.length} channel(s):
+
+${channelList}
+
+📝 Message Preview:
+${messagePreview}${mediaInfo}
+
+Are you sure you want to broadcast this message?`;
+
+    const keyboard: TelegramBot.InlineKeyboardMarkup = {
+      inline_keyboard: [
+        [
+          { text: "✅ Send to All", callback_data: "broadcast_confirm" },
+          { text: "❌ Cancel", callback_data: "broadcast_cancel" },
+        ],
+      ],
+    };
+
+    await this.telegramApiService.sendMessage(
+      bot,
+      chatId,
+      confirmationMessage,
+      { reply_markup: keyboard },
+    );
+  }
+
   private getChannelTypeEmoji(type: string): string {
     switch (type) {
       case "CHANNEL":
@@ -367,26 +460,10 @@ ${failureCount > 0 ? "\n💡 Failed channels may have restricted bot permissions
     }
   }
 
-  private getMessageTypeFromTelegramMessage(_messageId?: number): MessageType {
-    // Since we don't have access to the original message object here,
-    // we'll default to TEXT. For more accurate typing, you could pass
-    // the original message object to the broadcast session
-    return MessageType.TEXT;
-  }
-
   private extractMessageContent(msg: TelegramBot.Message): string {
     if (msg.text) return msg.text;
     if (msg.caption) return msg.caption;
-    if (msg.photo) return "[Photo]";
-    if (msg.video) return "[Video]";
-    if (msg.document) return "[Document]";
-    if (msg.audio) return "[Audio]";
-    if (msg.voice) return "[Voice]";
-    if (msg.sticker) return "[Sticker]";
-    if (msg.animation) return "[GIF]";
-    if (msg.poll) return "[Poll]";
-    if (msg.location) return "[Location]";
-    return "[Media message]";
+    return "";
   }
 
   private detectMessageType(msg: TelegramBot.Message): MessageType {
@@ -492,69 +569,157 @@ ${failureCount > 0 ? "\n💡 Failed channels may have restricted bot permissions
     const messageText =
       session.message !== "[Media message]" ? session.message : undefined;
 
-    // Send based on message type
-    switch (session.messageType) {
-      case MessageType.PHOTO:
-        if (session.mediaUrls && session.mediaUrls.length > 0) {
-          return await bot.sendPhoto(channelId, session.mediaUrls[0], {
-            caption: messageText,
-          });
-        }
-        break;
-
-      case MessageType.VIDEO:
-        if (session.mediaUrls && session.mediaUrls.length > 0) {
-          return await bot.sendVideo(channelId, session.mediaUrls[0], {
-            caption: messageText,
-          });
-        }
-        break;
-
-      case MessageType.DOCUMENT:
-        if (session.mediaUrls && session.mediaUrls.length > 0) {
-          return await bot.sendDocument(channelId, session.mediaUrls[0], {
-            caption: messageText,
-          });
-        }
-        break;
-
-      case MessageType.AUDIO:
-        if (session.mediaUrls && session.mediaUrls.length > 0) {
-          return await bot.sendAudio(channelId, session.mediaUrls[0], {
-            caption: messageText,
-          });
-        }
-        break;
-
-      case MessageType.GIF:
-        if (session.mediaUrls && session.mediaUrls.length > 0) {
-          return await bot.sendAnimation(channelId, session.mediaUrls[0], {
-            caption: messageText,
-          });
-        }
-        break;
-
-      case MessageType.STICKER:
-        if (session.mediaUrls && session.mediaUrls.length > 0) {
-          return await bot.sendSticker(channelId, session.mediaUrls[0]);
-        }
-        break;
-
-      default:
-        // Fallback to text for any unhandled types
-        return await this.telegramApiService.sendMessage(
-          bot,
-          channelId,
-          session.message,
-        );
+    // Handle multiple media files (media group)
+    if (session.mediaUrls && session.mediaUrls.length > 1) {
+      return await this.sendMediaGroup(bot, channelId, session, messageText);
     }
 
-    // If we get here, something went wrong, send as text
+    // Handle single media file
+    if (session.mediaUrls && session.mediaUrls.length === 1) {
+      return await this.sendSingleMedia(bot, channelId, session, messageText);
+    }
+
+    // Fallback to text message
     return await this.telegramApiService.sendMessage(
       bot,
       channelId,
       session.message,
     );
+  }
+
+  private async sendMediaGroup(
+    bot: TelegramBot,
+    channelId: number,
+    session: BroadcastSession,
+    caption?: string,
+  ): Promise<TelegramBot.Message> {
+    if (!session.mediaUrls || !session.mediaTypes) {
+      throw new Error("No media URLs or types found for media group");
+    }
+
+    // Check if all media can be sent as a group (only photos and videos)
+    const supportedGroupTypes = ["photo", "video"];
+    const canSendAsGroup = session.mediaTypes.every((type) =>
+      supportedGroupTypes.includes(type),
+    );
+
+    if (canSendAsGroup) {
+      // Send as media group
+      const media: TelegramBot.InputMedia[] = [];
+
+      for (let i = 0; i < session.mediaUrls.length; i++) {
+        const mediaUrl = session.mediaUrls[i];
+        const mediaType = session.mediaTypes[i];
+
+        const inputMedia: TelegramBot.InputMedia = {
+          type: mediaType as "photo" | "video",
+          media: mediaUrl,
+          caption: i === 0 ? caption : undefined, // Only add caption to first item
+        };
+
+        media.push(inputMedia);
+      }
+
+      // Send media group and return the first message
+      const messages = await bot.sendMediaGroup(channelId, media);
+      return Array.isArray(messages) ? messages[0] : messages;
+    } else {
+      // Send multiple individual messages for mixed media types
+      let firstMessage: TelegramBot.Message | null = null;
+
+      for (let i = 0; i < session.mediaUrls.length; i++) {
+        const mediaUrl = session.mediaUrls[i];
+        const mediaType = session.mediaTypes[i];
+        const messageCaption = i === 0 ? caption : undefined;
+
+        let sentMessage: TelegramBot.Message;
+
+        switch (mediaType) {
+          case "photo":
+            sentMessage = await bot.sendPhoto(channelId, mediaUrl, {
+              caption: messageCaption,
+            });
+            break;
+          case "video":
+            sentMessage = await bot.sendVideo(channelId, mediaUrl, {
+              caption: messageCaption,
+            });
+            break;
+          case "document":
+            sentMessage = await bot.sendDocument(channelId, mediaUrl, {
+              caption: messageCaption,
+            });
+            break;
+          case "audio":
+            sentMessage = await bot.sendAudio(channelId, mediaUrl, {
+              caption: messageCaption,
+            });
+            break;
+          case "animation":
+            sentMessage = await bot.sendAnimation(channelId, mediaUrl, {
+              caption: messageCaption,
+            });
+            break;
+          case "sticker":
+            sentMessage = await bot.sendSticker(channelId, mediaUrl);
+            break;
+          default:
+            // Fallback to document for unknown types
+            sentMessage = await bot.sendDocument(channelId, mediaUrl, {
+              caption: messageCaption,
+            });
+        }
+
+        if (i === 0) {
+          firstMessage = sentMessage;
+        }
+
+        // Small delay between messages to avoid rate limiting
+        if (i < session.mediaUrls.length - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+      }
+
+      return firstMessage!;
+    }
+  }
+
+  private async sendSingleMedia(
+    bot: TelegramBot,
+    channelId: number,
+    session: BroadcastSession,
+    caption?: string,
+  ): Promise<TelegramBot.Message> {
+    if (!session.mediaUrls || session.mediaUrls.length === 0) {
+      throw new Error("No media URL found for single media");
+    }
+
+    const mediaUrl = session.mediaUrls[0];
+
+    // Send based on message type
+    switch (session.messageType) {
+      case MessageType.PHOTO:
+        return await bot.sendPhoto(channelId, mediaUrl, { caption });
+
+      case MessageType.VIDEO:
+        return await bot.sendVideo(channelId, mediaUrl, { caption });
+
+      case MessageType.DOCUMENT:
+        return await bot.sendDocument(channelId, mediaUrl, { caption });
+
+      case MessageType.AUDIO:
+        return await bot.sendAudio(channelId, mediaUrl, { caption });
+
+      case MessageType.GIF:
+        return await bot.sendAnimation(channelId, mediaUrl, { caption });
+
+      case MessageType.STICKER:
+        return await bot.sendSticker(channelId, mediaUrl);
+
+      default:
+        // Fallback to photo for unknown types
+        return await bot.sendPhoto(channelId, mediaUrl, { caption });
+    }
   }
 
   // Check if user has an active broadcast session
