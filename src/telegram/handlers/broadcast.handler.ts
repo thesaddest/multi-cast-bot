@@ -626,12 +626,6 @@ ${messages.messages.messages.confirmBroadcastQuestion}`;
       urls.push(msg.sticker.file_id);
     }
 
-    if (urls.length === 0) {
-      throw new Error(
-        getMessages("ENGLISH" as any).messages.errors.noMediaUrls,
-      );
-    }
-
     return urls;
   }
 
@@ -645,12 +639,6 @@ ${messages.messages.messages.confirmBroadcastQuestion}`;
     if (msg.voice) types.push("voice");
     if (msg.animation) types.push("animation");
     if (msg.sticker) types.push("sticker");
-
-    if (types.length === 0) {
-      throw new Error(
-        getMessages("ENGLISH" as any).messages.errors.noMediaTypes,
-      );
-    }
 
     return types;
   }

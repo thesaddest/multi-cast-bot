@@ -58,6 +58,7 @@ export class TelegramService implements OnModuleInit {
       /\/cancel_subscription/,
       this.handleCommand.bind(this, "cancel_subscription"),
     );
+    this.bot.onText(/\/support/, this.handleCommand.bind(this, "support"));
 
     // Button text handlers (English)
     this.bot.onText(/^👤 Profile$/, this.handleCommand.bind(this, "profile"));
@@ -82,6 +83,7 @@ export class TelegramService implements OnModuleInit {
       /^💎 Subscription$/,
       this.handleCommand.bind(this, "subscription_management"),
     );
+    this.bot.onText(/^🆘 Support$/, this.handleCommand.bind(this, "support"));
 
     // Button text handlers (Russian)
     this.bot.onText(/^👤 Профиль$/, this.handleCommand.bind(this, "profile"));
@@ -106,6 +108,10 @@ export class TelegramService implements OnModuleInit {
       this.handleCommand.bind(this, "subscription_management"),
     );
     this.bot.onText(/^🌐 Язык$/, this.handleCommand.bind(this, "language"));
+    this.bot.onText(
+      /^🆘 Поддержка$/,
+      this.handleCommand.bind(this, "support"),
+    );
 
     // Channel username input handler
     this.bot.onText(
@@ -184,6 +190,9 @@ export class TelegramService implements OnModuleInit {
             this.bot,
             context,
           );
+          break;
+        case "support":
+          await this.commandHandler.handleSupport(this.bot, context);
           break;
         default:
           this.logger.warn(`Unknown command: ${command}`);

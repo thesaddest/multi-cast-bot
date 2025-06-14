@@ -67,7 +67,6 @@ ${channelsList}
 
 ${messages.messages.channels.legend.title}
 ${messages.messages.channels.legend.active}
-${messages.messages.channels.legend.limited}
 ${messages.messages.channels.legend.inactive}
 
 ${messages.messages.channels.management}`;

@@ -12,6 +12,7 @@ export interface I18nMessages {
     russian: string;
     back: string;
     subscription: string;
+    support: string;
   };
   messages: {
     welcome: {
@@ -95,7 +96,6 @@ export interface I18nMessages {
       legend: {
         title: string;
         active: string;
-        limited: string;
         inactive: string;
       };
       management: string;
@@ -313,6 +313,14 @@ export interface I18nMessages {
       addAsAdmin: string;
       connectedSuccessfully: string;
     };
+    support: {
+      title: string;
+      description: string;
+      contactInfo: string;
+      telegramProfile: string;
+      responseTime: string;
+      helpfulTips: string;
+    };
   };
 }
 
@@ -328,6 +336,7 @@ const ENGLISH_MESSAGES: I18nMessages = {
     russian: "🇷🇺 Русский",
     back: "⬅️ Back",
     subscription: "💎 Subscription",
+    support: "🆘 Support",
   },
   messages: {
     welcome: {
@@ -355,7 +364,7 @@ const ENGLISH_MESSAGES: I18nMessages = {
       messagesSent: "📊 Messages sent:",
       scheduledMessages: "📤 Scheduled messages:",
       premiumActive: "💎 Premium Active",
-      freePlan: (remaining: number) => `🆓 Free Plan (${remaining} remaining)`,
+      freePlan: (remaining: number) => `🆓 Free Plan (${remaining} remaining messages)`,
     },
     language: {
       title: "🌐 Language Settings",
@@ -368,7 +377,6 @@ const ENGLISH_MESSAGES: I18nMessages = {
       generalError: "❌ An error occurred",
       profileError: "❌ Error loading profile",
       languageError: "❌ Error changing language",
-      // New error messages
       tryAgain: "❌ An error occurred. Please try again.",
       channelUsernameProcessing:
         "❌ An error occurred while processing the channel username.",
@@ -421,7 +429,6 @@ const ENGLISH_MESSAGES: I18nMessages = {
       legend: {
         title: "Legend:",
         active: "🟢 Active - Ready for broadcasting",
-        limited: "🟡 Limited - Partial permissions",
         inactive: "🔴 Inactive - Cannot send messages",
       },
       management: "⚙️ Channel Management",
@@ -622,6 +629,7 @@ const ENGLISH_MESSAGES: I18nMessages = {
         "📊 Message History",
         "🌐 Language",
         "💎 Subscription",
+        "🆘 Support",
       ],
       russian: [
         "👤 Профиль",
@@ -631,6 +639,7 @@ const ENGLISH_MESSAGES: I18nMessages = {
         "📊 История сообщений",
         "🌐 Язык",
         "💎 Подписка",
+        "🆘 Поддержка",
       ],
     },
     general: {
@@ -680,6 +689,14 @@ const ENGLISH_MESSAGES: I18nMessages = {
         "Please add the bot as an administrator to this channel, then try again.",
       connectedSuccessfully: "✅ Channel Connected Successfully!",
     },
+    support: {
+      title: "🆘 Support & Help",
+      description: "Need help with the bot? I'm here to assist you!",
+      contactInfo: "📞 Contact Information:",
+      telegramProfile: "💬 Telegram: @thesaddestkid",
+      responseTime: "⏱️ Response time: Usually within 24 hours",
+      helpfulTips: "💡 Helpful Tips:\n• Make sure the bot has admin permissions in your channels",
+    },
   },
 };
 
@@ -695,6 +712,7 @@ const RUSSIAN_MESSAGES: I18nMessages = {
     russian: "🇷🇺 Русский",
     back: "⬅️ Назад",
     subscription: "💎 Подписка",
+    support: "🆘 Поддержка",
   },
   messages: {
     welcome: {
@@ -724,7 +742,7 @@ const RUSSIAN_MESSAGES: I18nMessages = {
       scheduledMessages: "📤 Запланированные сообщения:",
       premiumActive: "💎 Премиум активен",
       freePlan: (remaining: number) =>
-        `🆓 Бесплатный план (осталось ${remaining})`,
+        `🆓 Бесплатный план (осталось ${remaining} сообщения)`,
     },
     language: {
       title: "🌐 Настройки языка",
@@ -792,7 +810,6 @@ const RUSSIAN_MESSAGES: I18nMessages = {
       legend: {
         title: "Легенда:",
         active: "🟢 Активный - готов к рассылке",
-        limited: "🟡 Ограниченный - частичные права",
         inactive: "🔴 Неактивный - не может отправлять сообщения",
       },
       management: "⚙️ Управление каналами",
@@ -996,6 +1013,7 @@ const RUSSIAN_MESSAGES: I18nMessages = {
         "📊 Message History",
         "🌐 Language",
         "💎 Subscription",
+        "🆘 Поддержка",
       ],
       russian: [
         "👤 Профиль",
@@ -1005,6 +1023,7 @@ const RUSSIAN_MESSAGES: I18nMessages = {
         "📊 История сообщений",
         "🌐 Язык",
         "💎 Подписка",
+        "🆘 Поддержка",
       ],
     },
     general: {
@@ -1055,6 +1074,14 @@ const RUSSIAN_MESSAGES: I18nMessages = {
       addAsAdmin:
         "Пожалуйста, добавьте бота как администратора в этот канал, затем попробуйте снова.",
       connectedSuccessfully: "✅ Канал успешно подключен!",
+    },
+    support: {
+      title: "🆘 Поддержка и помощь",
+      description: "Нужна помощь с ботом? Я здесь, чтобы помочь вам!",
+      contactInfo: "📞 Контактная информация:",
+      telegramProfile: "💬 Telegram: @thesaddestkid",
+      responseTime: "⏱️ Время ответа: Обычно в течение 24 часов",
+      helpfulTips: "💡 Полезные советы:\n• Убедитесь, что бот имеет права администратора в ваших каналах",
     },
   },
 };

@@ -114,7 +114,10 @@ ${messages.messages.mainMenu.description}`;
           { text: messages.buttons.sendMessage },
           { text: messages.buttons.messageHistory },
         ],
-        [{ text: messages.buttons.changeLanguage }],
+        [
+          { text: messages.buttons.changeLanguage },
+          { text: messages.buttons.support },
+        ],
       ],
       {
         resize_keyboard: true,
@@ -701,6 +704,54 @@ ${messages.messages.subscription.remainsActive}`;
       );
       const messages = this.i18nService.getMessages(userLanguage);
 
+      await this.telegramApiService.sendMessage(
+        bot,
+        chatId,
+        messages.messages.errors.generalError,
+      );
+    }
+  }
+
+  async handleSupport(
+    bot: TelegramBot,
+    context: TelegramHandlerContext,
+  ): Promise<void> {
+    const { chatId, telegramUser } = context;
+
+    try {
+      const messages = await this.i18nService.getUserMessages(
+        telegramUser.id.toString(),
+      );
+
+      const supportMessage = `${messages.messages.support.title}
+
+${messages.messages.support.description}
+
+${messages.messages.support.contactInfo}
+${messages.messages.support.telegramProfile}
+
+${messages.messages.support.responseTime}
+
+${messages.messages.support.helpfulTips}`;
+
+      // Create an inline keyboard with a button that links to the Telegram profile
+      const keyboard = this.telegramApiService.createInlineKeyboard([
+        [
+          {
+            text: "💬 Contact Support",
+            url: "https://t.me/thesaddestkid",
+          },
+        ],
+      ]);
+
+      await this.telegramApiService.sendMessage(bot, chatId, supportMessage, {
+        reply_markup: keyboard,
+      });
+    } catch (error) {
+      this.logger.error("Error handling support command:", error);
+      const messages = await this.i18nService.getUserMessages(
+        telegramUser.id.toString(),
+      );
       await this.telegramApiService.sendMessage(
         bot,
         chatId,
