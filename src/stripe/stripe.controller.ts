@@ -11,7 +11,6 @@ import {
 } from "@nestjs/common";
 import { SubscriptionService } from "./subscription.service";
 import { StripeService } from "./stripe.service";
-import { TelegramService } from "../telegram/telegram.service";
 import { UserManagementService } from "../telegram/services/user-management.service";
 import { Request } from "express";
 import { ConfigService } from "src/config/config.service";
@@ -23,7 +22,6 @@ export class StripeController {
   constructor(
     private subscriptionService: SubscriptionService,
     private stripeService: StripeService,
-    private telegramService: TelegramService,
     private userManagementService: UserManagementService,
     private configService: ConfigService,
   ) {}
@@ -132,7 +130,7 @@ export class StripeController {
       `Payment success called with session_id: ${session_id}, user_id: ${user_id}`,
     );
 
-    const botUsername = this.configService.get<string>("app.bot_username");
+    const botUsername = this.configService.get<string>("app.tg.bot_username");
 
     if (!session_id || !user_id) {
       return `
@@ -171,7 +169,6 @@ export class StripeController {
         // Send Telegram notification and show updated profile
         await this.userManagementService.notifyUserOfSubscriptionSuccess(
           user_id as string,
-          this.telegramService,
         );
 
         return `
@@ -224,7 +221,7 @@ export class StripeController {
 
   @Get("cancel")
   async paymentCancel(@Req() req: Request) {
-    const botUsername = this.configService.get<string>("app.bot_username");
+    const botUsername = this.configService.get<string>("app.tg.bot_username");
 
     return `
       <!DOCTYPE html>

@@ -106,6 +106,10 @@ export class CallbackHandler {
         await this.handleConfirmCancelSubscription(bot, context);
         break;
 
+      case "confirm_cancel_subscription_menu":
+        await this.handleConfirmCancelSubscriptionFromMenu(bot, context);
+        break;
+
       case "keep_subscription":
         await this.handleKeepSubscription(bot, context);
         break;
@@ -795,7 +799,92 @@ ${messages.messages.subscription.freeMessages}`;
         reply_markup: this.telegramApiService.createInlineKeyboard(keyboard),
       });
     } catch (error) {
-      this.logger.error("Error cancelling subscription:", error);
+      this.logger.error('Error cancelling subscription:', error);
+      const userLanguage = await this.i18nService.getUserLanguage(
+        telegramUser.id.toString(),
+      );
+      const messages = this.i18nService.getMessages(userLanguage);
+
+      await this.telegramApiService.sendMessage(
+        bot,
+        chatId,
+        messages.messages.errors.generalError,
+      );
+    }
+  }
+
+  private async handleConfirmCancelSubscriptionFromMenu(
+    bot: TelegramBot,
+    context: TelegramHandlerContext,
+  ): Promise<void> {
+    const { chatId, telegramUser } = context;
+
+    try {
+      const userLanguage = await this.i18nService.getUserLanguage(
+        telegramUser.id.toString(),
+      );
+      const messages = this.i18nService.getMessages(userLanguage);
+
+      const user = await this.userManagementService.findUserByTelegramId(
+        telegramUser.id.toString(),
+      );
+
+      if (!user) {
+        await this.telegramApiService.sendMessage(
+          bot,
+          chatId,
+          messages.messages.errors.userNotFound,
+        );
+        return;
+      }
+
+      const subscription = await this.subscriptionService.getUserSubscriptionInfo(user.id);
+
+      if (!subscription || subscription.subscriptionStatus !== "ACTIVE") {
+        await this.telegramApiService.sendMessage(
+          bot,
+          chatId,
+          messages.messages.subscription.noPremiumToCancel,
+        );
+        return;
+      }
+
+      const cancelMessage = `${messages.messages.subscription.cancelTitle}
+
+${messages.messages.subscription.cancelConfirmation}
+
+${messages.messages.subscription.willLose}
+${messages.messages.subscription.unlimitedMessages}
+${messages.messages.subscription.prioritySupport}
+${messages.messages.subscription.advancedScheduling}
+
+${messages.messages.subscription.willKeep}
+${messages.messages.subscription.freeMessages}
+${messages.messages.subscription.basicFunctionality}
+${messages.messages.subscription.dataAndChannels}
+
+${messages.messages.subscription.remainsActive}`;
+
+      const keyboard = [
+        [
+          {
+            text: messages.messages.subscription.yesCancelSubscription,
+            callback_data: "confirm_cancel_subscription",
+          },
+        ],
+        [
+          {
+            text: messages.messages.subscription.noKeepPremium,
+            callback_data: "keep_subscription",
+          },
+        ],
+      ];
+
+      await this.telegramApiService.sendMessage(bot, chatId, cancelMessage, {
+        reply_markup: this.telegramApiService.createInlineKeyboard(keyboard),
+      });
+    } catch (error) {
+      this.logger.error('Error showing cancel confirmation:', error);
       const userLanguage = await this.i18nService.getUserLanguage(
         telegramUser.id.toString(),
       );

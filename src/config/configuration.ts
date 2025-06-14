@@ -9,13 +9,13 @@ export const Configuration = () => ({
     node_env: process.env.NODE_ENV,
     log_level: process.env.LOG_LEVEL,
     base_url: process.env.BASE_URL,
-    bot_username: process.env.BOT_USERNAME,
   },
   db: {
     db_url: process.env.DATABASE_URL,
   },
   tg: {
     api_token: process.env.TELEGRAM_API_TOKEN,
+    bot_username: process.env.BOT_USERNAME,
   },
   stripe: {
     secret_key: process.env.STRIPE_SECRET_KEY,

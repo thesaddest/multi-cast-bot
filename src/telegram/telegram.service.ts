@@ -10,7 +10,7 @@ import { BroadcastHandler } from "./handlers/broadcast.handler";
 
 // Services
 import { TelegramApiService } from "./services/telegram-api.service";
-import { DbService } from "../db/db.service";
+import { I18nService } from "./services/i18n.service";
 
 // Types
 import { TelegramHandlerContext } from "./types/telegram.types";
@@ -27,7 +27,7 @@ export class TelegramService implements OnModuleInit {
     private callbackHandler: CallbackHandler,
     private broadcastHandler: BroadcastHandler,
     private telegramApiService: TelegramApiService,
-    private dbService: DbService,
+    private i18nService: I18nService,
   ) {}
 
   onModuleInit() {
@@ -78,6 +78,7 @@ export class TelegramService implements OnModuleInit {
       this.handleCommand.bind(this, "messages"),
     );
     this.bot.onText(/^🌐 Language$/, this.handleCommand.bind(this, "language"));
+    this.bot.onText(/^💎 Subscription$/, this.handleCommand.bind(this, "subscription_management"));
 
     // Button text handlers (Russian)
     this.bot.onText(/^👤 Профиль$/, this.handleCommand.bind(this, "profile"));
@@ -97,6 +98,7 @@ export class TelegramService implements OnModuleInit {
       /^📜 История сообщений$/,
       this.handleCommand.bind(this, "messages"),
     );
+    this.bot.onText(/^💎 Подписка$/, this.handleCommand.bind(this, "subscription_management"));
     this.bot.onText(/^🌐 Язык$/, this.handleCommand.bind(this, "language"));
 
     // Channel username input handler
@@ -170,6 +172,9 @@ export class TelegramService implements OnModuleInit {
           break;
         case "cancel_subscription":
           await this.commandHandler.handleCancelSubscription(this.bot, context);
+          break;
+        case "subscription_management":
+          await this.commandHandler.handleSubscriptionManagement(this.bot, context);
           break;
         default:
           this.logger.warn(`Unknown command: ${command}`);
@@ -310,19 +315,23 @@ export class TelegramService implements OnModuleInit {
     userDisplayName?: string,
   ): Promise<void> {
     try {
-      // Send success notification
-      const successMessage = `🎉 Premium Subscription Activated!
+      // Get user language for proper translations
+      const userLanguage = await this.i18nService.getUserLanguage(chatId.toString());
+      const messages = this.i18nService.getMessages(userLanguage);
+      
+      // Send success notification with translated content
+      const successMessage = `${messages.messages.subscription.premiumActivatedTitle}
 
-✅ Your payment was successful and your premium subscription is now active!
+${messages.messages.subscription.premiumActivatedMessage}
 
-💎 You now have access to:
-• ✅ Unlimited messages
-• ✅ Priority support
-• ✅ Advanced scheduling
-• ✅ Analytics dashboard
-• ✅ Custom branding
+${messages.messages.subscription.premiumActivatedAccess}
+${messages.messages.subscription.premiumActivatedFeatures.unlimitedMessages}
+${messages.messages.subscription.premiumActivatedFeatures.prioritySupport}
+${messages.messages.subscription.premiumActivatedFeatures.advancedScheduling}
+${messages.messages.subscription.premiumActivatedFeatures.analyticsDashboard}
+${messages.messages.subscription.premiumActivatedFeatures.customBranding}
 
-Thank you for upgrading! You can now enjoy all premium features.`;
+${messages.messages.subscription.premiumActivatedThanks}`;
 
       await this.telegramApiService.sendMessage(
         this.bot,

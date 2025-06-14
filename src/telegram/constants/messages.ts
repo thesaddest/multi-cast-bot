@@ -11,6 +11,7 @@ export interface I18nMessages {
     english: string;
     russian: string;
     back: string;
+    subscription: string;
   };
   messages: {
     welcome: {
@@ -213,6 +214,29 @@ export interface I18nMessages {
       freeMessages: string;
       keepChoice: string;
       noPremiumToCancel: string;
+      managementTitle: string;
+      managementDescription: string;
+      viewDetails: string;
+      manageSubscription: string;
+      billingHistory: string;
+      currentPlan: string;
+      subscriptionDetails: string;
+      startDate: string;
+      nextBilling: string;
+      monthlyPrice: string;
+      status: string;
+      cancelSubscriptionButton: string;
+      premiumActivatedTitle: string;
+      premiumActivatedMessage: string;
+      premiumActivatedAccess: string;
+      premiumActivatedFeatures: {
+        unlimitedMessages: string;
+        prioritySupport: string;
+        advancedScheduling: string;
+        analyticsDashboard: string;
+        customBranding: string;
+      };
+      premiumActivatedThanks: string;
     };
     general: {
       unknown: string;
@@ -269,6 +293,7 @@ const ENGLISH_MESSAGES: I18nMessages = {
     english: "🇺🇸 English",
     russian: "🇷🇺 Русский",
     back: "⬅️ Back",
+    subscription: "💎 Subscription",
   },
   messages: {
     welcome: {
@@ -490,13 +515,36 @@ const ENGLISH_MESSAGES: I18nMessages = {
       payWithStripe: "💎 Pay with Stripe",
       subscriptionCancelled: "✅ Subscription Cancelled",
       cancelledMessage:
-        "Your premium subscription has been cancelled and will end at the end of your current billing cycle.",
-      returnToFreePlan: "🆓 After that, you'll return to the free plan with:",
-      freeMessages: "• 3 free messages per month",
+        "Your premium subscription has been cancelled.",
+      returnToFreePlan: "🆓 You'll return to the free plan with:",
+      freeMessages: "• 3 free messages",
       keepChoice:
         "💎 Great choice! Your premium subscription will continue as normal. Thank you for staying with us!",
       noPremiumToCancel:
         "❌ You don't have an active premium subscription to cancel.",
+      managementTitle: "📋 Subscription Management",
+      managementDescription: "Manage your subscription and billing details",
+      viewDetails: "View Details",
+      manageSubscription: "Manage Subscription",
+      billingHistory: "Billing History",
+      currentPlan: "Current Plan:",
+      subscriptionDetails: "Subscription Details",
+      startDate: "Start Date:",
+      nextBilling: "Next Billing:",
+      monthlyPrice: "Monthly Price:",
+      status: "Status:",
+      cancelSubscriptionButton: "🚫 Cancel Subscription",
+      premiumActivatedTitle: "🎉 Premium Subscription Activated!",
+      premiumActivatedMessage: "✅ Your payment was successful and your premium subscription is now active!",
+      premiumActivatedAccess: "💎 You now have access to:",
+      premiumActivatedFeatures: {
+        unlimitedMessages: "• ✅ Unlimited messages",
+        prioritySupport: "• ✅ Priority support",
+        advancedScheduling: "• ✅ Advanced scheduling",
+        analyticsDashboard: "• ✅ Analytics dashboard",
+        customBranding: "• ✅ Custom branding",
+      },
+      premiumActivatedThanks: "Thank you for upgrading! You can now enjoy all premium features.",
     },
     general: {
       unknown: "Unknown",
@@ -559,6 +607,7 @@ const RUSSIAN_MESSAGES: I18nMessages = {
     english: "🇺🇸 English",
     russian: "🇷🇺 Русский",
     back: "⬅️ Назад",
+    subscription: "💎 Подписка",
   },
   messages: {
     welcome: {
@@ -786,12 +835,35 @@ const RUSSIAN_MESSAGES: I18nMessages = {
       payWithStripe: "💎 Оплатить через Stripe",
       subscriptionCancelled: "✅ Подписка отменена",
       cancelledMessage:
-        "Ваша премиум подписка была отменена и закончится в конце текущего биллингового цикла.",
-      returnToFreePlan: "🆓 После этого вы вернетесь к бесплатному плану с:",
-      freeMessages: "• 3 бесплатных сообщения в месяц",
+        "Ваша премиум подписка была отменена.",
+      returnToFreePlan: "🆓 Вы вернетесь к бесплатному плану с:",
+      freeMessages: "• 3 бесплатных сообщения",
       keepChoice:
         "💎 Отличный выбор! Ваша премиум подписка будет продолжена как обычно. Спасибо, что остаетесь с нами!",
       noPremiumToCancel: "❌ У вас нет активной премиум подписки для отмены.",
+      managementTitle: "📋 Управление подпиской",
+      managementDescription: "Управляйте вашей подпиской и деталями выставления счетов",
+      viewDetails: "Просмотреть детали",
+      manageSubscription: "Управлять подпиской",
+      billingHistory: "История выставления счетов",
+      currentPlan: "Текущий план:",
+      subscriptionDetails: "Детали подписки",
+      startDate: "Дата начала:",
+      nextBilling: "Следующий платеж:",
+      monthlyPrice: "Ежемесячная стоимость:",
+      status: "Статус:",
+      cancelSubscriptionButton: "🚫 Отменить подписку",
+      premiumActivatedTitle: "🎉 Премиум подписка активирована!",
+      premiumActivatedMessage: "✅ Ваш платеж прошел успешно и ваша премиум подписка теперь активна!",
+      premiumActivatedAccess: "💎 Теперь у вас есть доступ к:",
+      premiumActivatedFeatures: {
+        unlimitedMessages: "• ✅ Безлимитные сообщения",
+        prioritySupport: "• ✅ Приоритетная поддержка",
+        advancedScheduling: "• ✅ Расширенное планирование",
+        analyticsDashboard: "• ✅ Панель аналитики",
+        customBranding: "• ✅ Персональный брендинг",
+      },
+      premiumActivatedThanks: "Спасибо за обновление! Теперь вы можете наслаждаться всеми премиум функциями.",
     },
     general: {
       unknown: "Неизвестно",

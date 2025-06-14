@@ -102,13 +102,16 @@ ${messages.messages.mainMenu.description}`;
       [
         [
           { text: messages.buttons.profile },
-          { text: messages.buttons.myChannels },
+          { text: messages.buttons.subscription },
         ],
         [
+          { text: messages.buttons.myChannels },
           { text: messages.buttons.addChannel },
-          { text: messages.buttons.sendMessage },
         ],
-        [{ text: messages.buttons.messageHistory }],
+        [
+          { text: messages.buttons.sendMessage },
+          { text: messages.buttons.messageHistory },
+        ],
         [{ text: messages.buttons.changeLanguage }],
       ],
       {
@@ -487,6 +490,118 @@ ${messages.messages.subscription.clickToUpgrade}`;
       });
     } catch (error) {
       this.logger.error("Error handling subscribe command:", error);
+      const userLanguage = await this.i18nService.getUserLanguage(
+        telegramUser.id.toString(),
+      );
+      const messages = this.i18nService.getMessages(userLanguage);
+
+      await this.telegramApiService.sendMessage(
+        bot,
+        chatId,
+        messages.messages.errors.generalError,
+      );
+    }
+  }
+
+  async handleSubscriptionManagement(
+    bot: TelegramBot,
+    context: TelegramHandlerContext,
+  ): Promise<void> {
+    const { chatId, telegramUser } = context;
+
+    try {
+      const userLanguage = await this.i18nService.getUserLanguage(
+        telegramUser.id.toString(),
+      );
+      const messages = this.i18nService.getMessages(userLanguage);
+
+      const user = await this.userManagementService.findUserByTelegramId(
+        telegramUser.id.toString(),
+      );
+      if (!user) {
+        await this.telegramApiService.sendMessage(
+          bot,
+          chatId,
+          messages.messages.errors.userNotFound,
+        );
+        return;
+      }
+
+      const subscriptionInfo = await this.subscriptionService.getUserSubscriptionInfo(user.id);
+      
+      // Format start date
+      const startDate = user.subscriptionStartDate ? 
+        user.subscriptionStartDate.toDateString() : 
+        messages.messages.general.notSet;
+
+      let managementMessage = `${messages.messages.subscription.managementTitle}
+
+${messages.messages.subscription.managementDescription}
+
+${messages.messages.subscription.currentPlan} ${subscriptionInfo.subscriptionPlan === 'PREMIUM' ? '💎 Premium' : '🆓 Free'}
+${messages.messages.subscription.status} ${subscriptionInfo.subscriptionStatus}`;
+
+      let keyboard;
+
+      if (subscriptionInfo.subscriptionPlan === "PREMIUM") {
+        managementMessage += `
+${messages.messages.subscription.startDate} ${startDate}
+${messages.messages.subscription.monthlyPrice} $10/month
+
+${messages.messages.subscription.yourStats}
+${messages.messages.subscription.totalMessages(subscriptionInfo.totalMessages)}`;
+
+                  keyboard = {
+            inline_keyboard: [
+              [
+                {
+                  text: messages.messages.subscription.cancelSubscriptionButton,
+                  callback_data: "confirm_cancel_subscription_menu",
+                },
+              ],
+            [
+              {
+                text: messages.buttons.back,
+                callback_data: "back_to_menu",
+              },
+            ],
+          ],
+        };
+      } else {
+        managementMessage += `
+
+${messages.messages.subscription.freeUsed(subscriptionInfo.freeMessagesUsed, 3)}
+${messages.messages.subscription.remaining(subscriptionInfo.freeMessagesRemaining)}
+
+${messages.messages.subscription.premiumPlan}
+${messages.messages.subscription.unlimitedMessages}
+${messages.messages.subscription.prioritySupport}
+${messages.messages.subscription.advancedScheduling}`;
+
+        keyboard = {
+          inline_keyboard: [
+            [
+              {
+                text: messages.messages.subscription.upgradeToPremium,
+                callback_data: "upgrade_premium",
+              },
+            ],
+            [
+              {
+                text: messages.buttons.back,
+                callback_data: "back_to_menu",
+              },
+            ],
+          ],
+        };
+      }
+
+      await this.telegramApiService.sendMessage(bot, chatId, managementMessage, {
+        reply_markup: keyboard,
+      });
+
+    } catch (error) {
+      this.logger.error("Error handling subscription management:", error);
       const userLanguage = await this.i18nService.getUserLanguage(
         telegramUser.id.toString(),
       );

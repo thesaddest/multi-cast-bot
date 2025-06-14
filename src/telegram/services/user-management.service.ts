@@ -1,14 +1,19 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, forwardRef, Inject } from "@nestjs/common";
 import { DbService } from "../../db/db.service";
 import { Platform } from "@prisma/client";
 import * as TelegramBot from "node-telegram-bot-api";
 import { TelegramUserWithChannels } from "../types/telegram.types";
+import { TelegramService } from "../telegram.service";
 
 @Injectable()
 export class UserManagementService {
   private readonly logger = new Logger(UserManagementService.name);
 
-  constructor(private dbService: DbService) {}
+  constructor(
+    private dbService: DbService,
+    @Inject(forwardRef(() => TelegramService))
+    private telegramService: TelegramService,
+  ) {}
 
   async findUserByTelegramId(
     telegramId: string,
@@ -133,10 +138,7 @@ export class UserManagementService {
     }
   }
 
-  async notifyUserOfSubscriptionSuccess(
-    userId: string,
-    telegramService: any, // We'll type this properly when we inject it
-  ): Promise<void> {
+  async notifyUserOfSubscriptionSuccess(userId: string): Promise<void> {
     try {
       const userInfo = await this.findUserTelegramInfoById(userId);
       if (!userInfo) {
@@ -147,7 +149,8 @@ export class UserManagementService {
       }
 
       const chatId = parseInt(userInfo.telegramId);
-      await telegramService.sendSubscriptionSuccessNotification(
+      
+      await this.telegramService.sendSubscriptionSuccessNotification(
         chatId,
         userInfo.displayName,
       );
