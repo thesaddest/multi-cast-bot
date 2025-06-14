@@ -14,6 +14,7 @@ import { StripeService } from "./stripe.service";
 import { UserManagementService } from "../telegram/services/user-management.service";
 import { Request } from "express";
 import { ConfigService } from "src/config/config.service";
+import { getMessages } from "../telegram/constants/messages";
 
 @Controller("stripe")
 export class StripeController {
@@ -159,7 +160,9 @@ export class StripeController {
         session_id as string,
       );
 
-      if (session.payment_status === "paid") {
+      const paymentStatus = session.payment_status;
+
+      if (paymentStatus === "paid") {
         // Update the user's subscription status
         await this.subscriptionService.activateSubscriptionFromSession(
           user_id as string,
@@ -194,7 +197,9 @@ export class StripeController {
           </html>
         `;
       } else {
-        throw new Error("Payment not completed");
+        throw new Error(
+          getMessages("ENGLISH" as any).messages.errors.paymentNotCompleted,
+        );
       }
     } catch (error) {
       this.logger.error("Error verifying payment:", error);

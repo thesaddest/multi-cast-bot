@@ -2,7 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { DbService } from "../../db/db.service";
 import { Platform, ChannelType, Channel } from "@prisma/client";
 import { CreateChannelData } from "../types/telegram.types";
-import { I18nMessages } from "../constants/messages";
+import { I18nMessages, getMessages } from "../constants/messages";
 
 @Injectable()
 export class ChannelManagementService {
@@ -83,7 +83,9 @@ export class ChannelManagementService {
     });
 
     if (!channel) {
-      throw new Error("Channel not found");
+      throw new Error(
+        getMessages("ENGLISH" as any).messages.errors.channelNotFound,
+      );
     }
 
     const updatedChannel = await this.dbService.channel.update({
@@ -158,18 +160,19 @@ export class ChannelManagementService {
       }
     }
 
-    // Fallback for backward compatibility
+    // Fallback for backward compatibility - use English translations
+    const fallbackMessages = getMessages("ENGLISH" as any);
     switch (type) {
       case ChannelType.PRIVATE:
-        return "👤 Private Chat";
+        return fallbackMessages.messages.display.privateChat;
       case ChannelType.GROUP:
         return "👥 Group";
       case ChannelType.SUPERGROUP:
         return "👥 Supergroup";
       case ChannelType.CHANNEL:
-        return "📢 Channel";
+        return fallbackMessages.messages.display.channelType;
       default:
-        return "❓ Unknown";
+        return fallbackMessages.messages.display.unknownType;
     }
   }
 

@@ -149,7 +149,7 @@ export class UserManagementService {
       }
 
       const chatId = parseInt(userInfo.telegramId);
-      
+
       await this.telegramService.sendSubscriptionSuccessNotification(
         chatId,
         userInfo.displayName,

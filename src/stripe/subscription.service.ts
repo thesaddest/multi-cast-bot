@@ -3,6 +3,7 @@ import { DbService } from "../db/db.service";
 import { StripeService } from "./stripe.service";
 import { ConfigService } from "../config/config.service";
 import { SubscriptionStatus, SubscriptionPlan } from "@prisma/client";
+import { getMessages } from "../telegram/constants/messages";
 
 @Injectable()
 export class SubscriptionService {
@@ -27,7 +28,10 @@ export class SubscriptionService {
     });
 
     if (!user) {
-      return { allowed: false, reason: "User not found" };
+      return {
+        allowed: false,
+        reason: getMessages("ENGLISH" as any).messages.errors.userNotFound,
+      };
     }
 
     // Check if user has active premium subscription
@@ -55,7 +59,9 @@ export class SubscriptionService {
     });
 
     if (!user) {
-      throw new Error("User not found");
+      throw new Error(
+        getMessages("ENGLISH" as any).messages.errors.userNotFound,
+      );
     }
 
     // If user has premium subscription, don't increment free message count
@@ -89,7 +95,9 @@ export class SubscriptionService {
     });
 
     if (!user) {
-      throw new Error("User not found");
+      throw new Error(
+        getMessages("ENGLISH" as any).messages.errors.userNotFound,
+      );
     }
 
     let customerId = user.stripeCustomerId;
@@ -145,7 +153,9 @@ export class SubscriptionService {
     });
 
     if (!user) {
-      throw new Error("User not found");
+      throw new Error(
+        getMessages("ENGLISH" as any).messages.errors.userNotFound,
+      );
     }
 
     let customerId = user.stripeCustomerId;
@@ -180,7 +190,9 @@ export class SubscriptionService {
     });
 
     if (!user || !user.stripeSubscriptionId) {
-      throw new Error("No active subscription found");
+      throw new Error(
+        getMessages("ENGLISH" as any).messages.errors.noActiveSubscription,
+      );
     }
 
     await this.stripeService.cancelSubscription(user.stripeSubscriptionId);
@@ -328,7 +340,9 @@ export class SubscriptionService {
     });
 
     if (!user) {
-      throw new Error("User not found");
+      throw new Error(
+        getMessages("ENGLISH" as any).messages.errors.userNotFound,
+      );
     }
 
     return {
@@ -357,13 +371,17 @@ export class SubscriptionService {
       });
 
       if (!user) {
-        throw new Error("User not found");
+        throw new Error(
+          getMessages("ENGLISH" as any).messages.errors.userNotFound,
+        );
       }
 
       // Get the subscription from the session
       const subscriptionId = session.subscription;
       if (!subscriptionId) {
-        throw new Error("No subscription found in session");
+        throw new Error(
+          getMessages("ENGLISH" as any).messages.errors.noSubscriptionInSession,
+        );
       }
 
       // Update user with subscription info

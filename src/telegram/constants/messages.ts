@@ -49,6 +49,22 @@ export interface I18nMessages {
       generalError: string;
       profileError: string;
       languageError: string;
+      // New error messages
+      tryAgain: string;
+      channelUsernameProcessing: string;
+      unableToGetUserInfo: string;
+      accountSetupError: string;
+      errorOccurred: string;
+      // System errors
+      paymentNotCompleted: string;
+      channelNotFound: string;
+      stripeSecretNotConfigured: string;
+      stripeWebhookSecretNotConfigured: string;
+      noActiveSubscription: string;
+      noSubscriptionInSession: string;
+      noMediaUrls: string;
+      noMediaUrl: string;
+      noMediaTypes: string;
     };
     messages: {
       noMessages: string;
@@ -137,7 +153,6 @@ export interface I18nMessages {
       tipText: string;
       tipMedia: string;
       tipFormatting: string;
-      tipCancel: string;
       sendToAll: string;
       sessionExpired: string;
       cancelled: string;
@@ -237,6 +252,25 @@ export interface I18nMessages {
         customBranding: string;
       };
       premiumActivatedThanks: string;
+      // Payment error messages
+      paymentError: string;
+      paymentVerificationFailed: string;
+      paymentCancelled: string;
+    };
+    display: {
+      // Status displays
+      premium: string;
+      free: string;
+      historyEmoji: string;
+      // Channel type fallbacks
+      privateChat: string;
+      channelType: string;
+      unknownType: string;
+    };
+    menuButtons: {
+      // Button text arrays for comparison
+      english: string[];
+      russian: string[];
     };
     general: {
       unknown: string;
@@ -334,6 +368,24 @@ const ENGLISH_MESSAGES: I18nMessages = {
       generalError: "❌ An error occurred",
       profileError: "❌ Error loading profile",
       languageError: "❌ Error changing language",
+      // New error messages
+      tryAgain: "❌ An error occurred. Please try again.",
+      channelUsernameProcessing:
+        "❌ An error occurred while processing the channel username.",
+      unableToGetUserInfo: "❌ Unable to get user information",
+      accountSetupError:
+        "❌ Sorry, there was an error setting up your account. Please try again later.",
+      errorOccurred: "Error occurred",
+      // System errors
+      paymentNotCompleted: "Payment not completed",
+      channelNotFound: "Channel not found",
+      stripeSecretNotConfigured: "Stripe secret key not configured",
+      stripeWebhookSecretNotConfigured: "Stripe webhook secret not configured",
+      noActiveSubscription: "No active subscription found",
+      noSubscriptionInSession: "No subscription found in session",
+      noMediaUrls: "No media URLs or types found for media group",
+      noMediaUrl: "No media URL found for single media",
+      noMediaTypes: "No media types found for media group",
     },
     messages: {
       noMessages: "📭 No messages found",
@@ -434,7 +486,6 @@ const ENGLISH_MESSAGES: I18nMessages = {
       tipText: "• You can send text, photos, videos, or documents",
       tipMedia: "• Media files will be posted natively (not forwarded)",
       tipFormatting: "• Use formatting: *bold*, _italic_, `code`",
-      tipCancel: "• Type /cancel to cancel broadcasting",
       sendToAll: "✅ Send to All",
       sessionExpired: "Session expired. Please start again.",
       cancelled: "Cancelled",
@@ -514,8 +565,7 @@ const ENGLISH_MESSAGES: I18nMessages = {
       advancedSchedulingFeatures: "• Advanced scheduling features",
       payWithStripe: "💎 Pay with Stripe",
       subscriptionCancelled: "✅ Subscription Cancelled",
-      cancelledMessage:
-        "Your premium subscription has been cancelled.",
+      cancelledMessage: "Your premium subscription has been cancelled.",
       returnToFreePlan: "🆓 You'll return to the free plan with:",
       freeMessages: "• 3 free messages",
       keepChoice:
@@ -535,7 +585,8 @@ const ENGLISH_MESSAGES: I18nMessages = {
       status: "Status:",
       cancelSubscriptionButton: "🚫 Cancel Subscription",
       premiumActivatedTitle: "🎉 Premium Subscription Activated!",
-      premiumActivatedMessage: "✅ Your payment was successful and your premium subscription is now active!",
+      premiumActivatedMessage:
+        "✅ Your payment was successful and your premium subscription is now active!",
       premiumActivatedAccess: "💎 You now have access to:",
       premiumActivatedFeatures: {
         unlimitedMessages: "• ✅ Unlimited messages",
@@ -544,7 +595,43 @@ const ENGLISH_MESSAGES: I18nMessages = {
         analyticsDashboard: "• ✅ Analytics dashboard",
         customBranding: "• ✅ Custom branding",
       },
-      premiumActivatedThanks: "Thank you for upgrading! You can now enjoy all premium features.",
+      premiumActivatedThanks:
+        "Thank you for upgrading! You can now enjoy all premium features.",
+      // Payment error messages
+      paymentError: "❌ Payment Error",
+      paymentVerificationFailed: "❌ Payment Verification Failed",
+      paymentCancelled: "🚫 Payment Cancelled",
+    },
+    display: {
+      // Status displays
+      premium: "💎 Premium",
+      free: "🆓 Free",
+      historyEmoji: "📊",
+      // Channel type fallbacks
+      privateChat: "👤 Private Chat",
+      channelType: "📢 Channel",
+      unknownType: "❓ Unknown",
+    },
+    menuButtons: {
+      // Button text arrays for comparison
+      english: [
+        "👤 Profile",
+        "📋 My Channels",
+        "➕ Add Channel",
+        "📢 Send Message",
+        "📊 Message History",
+        "🌐 Language",
+        "💎 Subscription",
+      ],
+      russian: [
+        "👤 Профиль",
+        "📋 Мои каналы",
+        "➕ Добавить канал",
+        "📢 Отправить сообщение",
+        "📊 История сообщений",
+        "🌐 Язык",
+        "💎 Подписка",
+      ],
     },
     general: {
       unknown: "Unknown",
@@ -650,6 +737,25 @@ const RUSSIAN_MESSAGES: I18nMessages = {
       generalError: "❌ Произошла ошибка",
       profileError: "❌ Ошибка загрузки профиля",
       languageError: "❌ Ошибка изменения языка",
+      // New error messages
+      tryAgain: "❌ Произошла ошибка. Пожалуйста, попробуйте еще раз.",
+      channelUsernameProcessing:
+        "❌ Произошла ошибка при обработке имени канала.",
+      unableToGetUserInfo: "❌ Не удалось получить информацию о пользователе",
+      accountSetupError:
+        "❌ Извините, произошла ошибка при настройке вашего аккаунта. Пожалуйста, попробуйте позже.",
+      errorOccurred: "Произошла ошибка",
+      // System errors
+      paymentNotCompleted: "Платеж не завершен",
+      channelNotFound: "Канал не найден",
+      stripeSecretNotConfigured: "Секретный ключ Stripe не настроен",
+      stripeWebhookSecretNotConfigured:
+        "Секретный ключ вебхука Stripe не настроен",
+      noActiveSubscription: "Не найдена активная подписка",
+      noSubscriptionInSession: "Не найдена подписка в сессии",
+      noMediaUrls: "Не найдены URL или типы медиа для группы медиа",
+      noMediaUrl: "Не найден URL медиа",
+      noMediaTypes: "Не найдены типы медиа для группы медиа",
     },
     messages: {
       noMessages: "📭 Сообщения не найдены",
@@ -755,7 +861,6 @@ const RUSSIAN_MESSAGES: I18nMessages = {
       tipText: "• Можно отправлять текст, фото, видео или документы",
       tipMedia: "• Медиафайлы будут опубликованы нативно (не пересланы)",
       tipFormatting: "• Используйте форматирование: *жирный*, _курсив_, `код`",
-      tipCancel: "• Введите /cancel для отмены рассылки",
       sendToAll: "✅ Отправить всем",
       sessionExpired: "Сессия истекла. Пожалуйста, начните заново.",
       cancelled: "Отмена",
@@ -834,15 +939,15 @@ const RUSSIAN_MESSAGES: I18nMessages = {
       advancedSchedulingFeatures: "• Расширенные функции планирования",
       payWithStripe: "💎 Оплатить через Stripe",
       subscriptionCancelled: "✅ Подписка отменена",
-      cancelledMessage:
-        "Ваша премиум подписка была отменена.",
+      cancelledMessage: "Ваша премиум подписка была отменена.",
       returnToFreePlan: "🆓 Вы вернетесь к бесплатному плану с:",
       freeMessages: "• 3 бесплатных сообщения",
       keepChoice:
         "💎 Отличный выбор! Ваша премиум подписка будет продолжена как обычно. Спасибо, что остаетесь с нами!",
       noPremiumToCancel: "❌ У вас нет активной премиум подписки для отмены.",
       managementTitle: "📋 Управление подпиской",
-      managementDescription: "Управляйте вашей подпиской и деталями выставления счетов",
+      managementDescription:
+        "Управляйте вашей подпиской и деталями выставления счетов",
       viewDetails: "Просмотреть детали",
       manageSubscription: "Управлять подпиской",
       billingHistory: "История выставления счетов",
@@ -854,7 +959,8 @@ const RUSSIAN_MESSAGES: I18nMessages = {
       status: "Статус:",
       cancelSubscriptionButton: "🚫 Отменить подписку",
       premiumActivatedTitle: "🎉 Премиум подписка активирована!",
-      premiumActivatedMessage: "✅ Ваш платеж прошел успешно и ваша премиум подписка теперь активна!",
+      premiumActivatedMessage:
+        "✅ Ваш платеж прошел успешно и ваша премиум подписка теперь активна!",
       premiumActivatedAccess: "💎 Теперь у вас есть доступ к:",
       premiumActivatedFeatures: {
         unlimitedMessages: "• ✅ Безлимитные сообщения",
@@ -863,7 +969,43 @@ const RUSSIAN_MESSAGES: I18nMessages = {
         analyticsDashboard: "• ✅ Панель аналитики",
         customBranding: "• ✅ Персональный брендинг",
       },
-      premiumActivatedThanks: "Спасибо за обновление! Теперь вы можете наслаждаться всеми премиум функциями.",
+      premiumActivatedThanks:
+        "Спасибо за обновление! Теперь вы можете наслаждаться всеми премиум функциями.",
+      // Payment error messages
+      paymentError: "❌ Ошибка платежа",
+      paymentVerificationFailed: "❌ Ошибка верификации платежа",
+      paymentCancelled: "🚫 Платеж отменен",
+    },
+    display: {
+      // Status displays
+      premium: "💎 Премиум",
+      free: "🆓 Бесплатно",
+      historyEmoji: "📊",
+      // Channel type fallbacks
+      privateChat: "👤 Приватный чат",
+      channelType: "📢 Канал",
+      unknownType: "❓ Неизвестно",
+    },
+    menuButtons: {
+      // Button text arrays for comparison
+      english: [
+        "👤 Profile",
+        "📋 My Channels",
+        "➕ Add Channel",
+        "📢 Send Message",
+        "📊 Message History",
+        "🌐 Language",
+        "💎 Subscription",
+      ],
+      russian: [
+        "👤 Профиль",
+        "📋 Мои каналы",
+        "➕ Добавить канал",
+        "📢 Отправить сообщение",
+        "📊 История сообщений",
+        "🌐 Язык",
+        "💎 Подписка",
+      ],
     },
     general: {
       unknown: "Неизвестно",

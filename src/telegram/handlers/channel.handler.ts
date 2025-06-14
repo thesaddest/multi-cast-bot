@@ -405,7 +405,7 @@ ${messages.messages.channels.autoDetect}`;
     keyboard.push([
       { text: messages.buttons.addChannel, callback_data: "add_channel" },
       {
-        text: `🔄 ${messages.messages.channels.refresh}`,
+        text: `${messages.messages.channels.refresh}`,
         callback_data: "refresh_channels",
       },
     ]);

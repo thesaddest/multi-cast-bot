@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "../config/config.service";
 import Stripe from "stripe";
+import { getMessages } from "../telegram/constants/messages";
 
 @Injectable()
 export class StripeService {
@@ -11,7 +12,9 @@ export class StripeService {
     const stripeSecretKey = this.configService.get<string>("stripe.secret_key");
     if (!stripeSecretKey) {
       this.logger.error("Stripe secret key not found in configuration");
-      throw new Error("Stripe secret key not configured");
+      throw new Error(
+        getMessages("ENGLISH" as any).messages.errors.stripeSecretNotConfigured,
+      );
     }
 
     this.stripe = new Stripe(stripeSecretKey, {
@@ -130,7 +133,11 @@ export class StripeService {
       "stripe.webhook_secret",
     );
     if (!webhookSecret) {
-      throw new Error("Stripe webhook secret not configured");
+      throw new Error(
+        getMessages(
+          "ENGLISH" as any,
+        ).messages.errors.stripeWebhookSecretNotConfigured,
+      );
     }
 
     try {

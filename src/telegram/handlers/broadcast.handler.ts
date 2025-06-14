@@ -8,6 +8,7 @@ import { SubscriptionService } from "../../stripe/subscription.service";
 import { I18nService } from "../services/i18n.service";
 import { TelegramHandlerContext } from "../types/telegram.types";
 import { Platform, MessageType, Channel } from "@prisma/client";
+import { getMessages } from "../constants/messages";
 
 interface BroadcastSession {
   userId: string;
@@ -142,8 +143,7 @@ ${messages.messages.broadcast.typeMessage}
 ${messages.messages.broadcast.tips}
 ${messages.messages.broadcast.tipText}
 ${messages.messages.broadcast.tipMedia}
-${messages.messages.broadcast.tipFormatting}
-${messages.messages.broadcast.tipCancel}`,
+${messages.messages.broadcast.tipFormatting}`,
         { parse_mode: "Markdown" },
       );
     } catch (error) {
@@ -285,8 +285,13 @@ ${messages.messages.broadcast.tipCancel}`,
       }
     } catch (error) {
       this.logger.error("Error handling broadcast confirmation:", error);
+      // Get user language for error message
+      const userLanguage = await this.i18nService.getUserLanguage(
+        callbackQuery.from?.id?.toString() || "",
+      );
+      const messages = this.i18nService.getMessages(userLanguage);
       await bot.answerCallbackQuery(callbackQuery.id, {
-        text: "Error occurred",
+        text: messages.messages.errors.errorOccurred,
       });
     }
   }
@@ -621,6 +626,12 @@ ${messages.messages.messages.confirmBroadcastQuestion}`;
       urls.push(msg.sticker.file_id);
     }
 
+    if (urls.length === 0) {
+      throw new Error(
+        getMessages("ENGLISH" as any).messages.errors.noMediaUrls,
+      );
+    }
+
     return urls;
   }
 
@@ -634,6 +645,12 @@ ${messages.messages.messages.confirmBroadcastQuestion}`;
     if (msg.voice) types.push("voice");
     if (msg.animation) types.push("animation");
     if (msg.sticker) types.push("sticker");
+
+    if (types.length === 0) {
+      throw new Error(
+        getMessages("ENGLISH" as any).messages.errors.noMediaTypes,
+      );
+    }
 
     return types;
   }
@@ -704,7 +721,9 @@ ${messages.messages.messages.confirmBroadcastQuestion}`;
     caption?: string,
   ): Promise<TelegramBot.Message> {
     if (!session.mediaUrls || !session.mediaTypes) {
-      throw new Error("No media URLs or types found for media group");
+      throw new Error(
+        getMessages("ENGLISH" as any).messages.errors.noMediaUrls,
+      );
     }
 
     // Check if all media can be sent as a group (only photos and videos)
@@ -801,7 +820,7 @@ ${messages.messages.messages.confirmBroadcastQuestion}`;
     caption?: string,
   ): Promise<TelegramBot.Message> {
     if (!session.mediaUrls || session.mediaUrls.length === 0) {
-      throw new Error("No media URL found for single media");
+      throw new Error(getMessages("ENGLISH" as any).messages.errors.noMediaUrl);
     }
 
     const mediaUrl = session.mediaUrls[0];

@@ -74,11 +74,14 @@ export class TelegramService implements OnModuleInit {
       this.handleCommand.bind(this, "broadcast"),
     );
     this.bot.onText(
-      /^📜 Message History$/,
+      /^📊 Message History$/,
       this.handleCommand.bind(this, "messages"),
     );
     this.bot.onText(/^🌐 Language$/, this.handleCommand.bind(this, "language"));
-    this.bot.onText(/^💎 Subscription$/, this.handleCommand.bind(this, "subscription_management"));
+    this.bot.onText(
+      /^💎 Subscription$/,
+      this.handleCommand.bind(this, "subscription_management"),
+    );
 
     // Button text handlers (Russian)
     this.bot.onText(/^👤 Профиль$/, this.handleCommand.bind(this, "profile"));
@@ -95,10 +98,13 @@ export class TelegramService implements OnModuleInit {
       this.handleCommand.bind(this, "broadcast"),
     );
     this.bot.onText(
-      /^📜 История сообщений$/,
+      /^📊 История сообщений$/,
       this.handleCommand.bind(this, "messages"),
     );
-    this.bot.onText(/^💎 Подписка$/, this.handleCommand.bind(this, "subscription_management"));
+    this.bot.onText(
+      /^💎 Подписка$/,
+      this.handleCommand.bind(this, "subscription_management"),
+    );
     this.bot.onText(/^🌐 Язык$/, this.handleCommand.bind(this, "language"));
 
     // Channel username input handler
@@ -174,17 +180,25 @@ export class TelegramService implements OnModuleInit {
           await this.commandHandler.handleCancelSubscription(this.bot, context);
           break;
         case "subscription_management":
-          await this.commandHandler.handleSubscriptionManagement(this.bot, context);
+          await this.commandHandler.handleSubscriptionManagement(
+            this.bot,
+            context,
+          );
           break;
         default:
           this.logger.warn(`Unknown command: ${command}`);
       }
     } catch (error) {
       this.logger.error(`Error handling command ${command}:`, error);
+      // Get user language for error message
+      const userLanguage = await this.i18nService.getUserLanguage(
+        msg.from?.id?.toString() || msg.chat.id.toString(),
+      );
+      const messages = this.i18nService.getMessages(userLanguage);
       await this.telegramApiService.sendMessage(
         this.bot,
         msg.chat.id,
-        "❌ An error occurred. Please try again.",
+        messages.messages.errors.tryAgain,
       );
     }
   }
@@ -209,10 +223,15 @@ export class TelegramService implements OnModuleInit {
       );
     } catch (error) {
       this.logger.error("Error handling channel username input:", error);
+      // Get user language for error message
+      const userLanguage = await this.i18nService.getUserLanguage(
+        msg.from?.id?.toString() || msg.chat.id.toString(),
+      );
+      const messages = this.i18nService.getMessages(userLanguage);
       await this.telegramApiService.sendMessage(
         this.bot,
         msg.chat.id,
-        "❌ An error occurred while processing the channel username.",
+        messages.messages.errors.channelUsernameProcessing,
       );
     }
   }
@@ -280,10 +299,16 @@ export class TelegramService implements OnModuleInit {
     } catch (error) {
       this.logger.error("Error handling callback query:", error);
       if (callbackQuery.message?.chat.id) {
+        // Get user language for error message
+        const userLanguage = await this.i18nService.getUserLanguage(
+          callbackQuery.from?.id?.toString() ||
+            callbackQuery.message.chat.id.toString(),
+        );
+        const messages = this.i18nService.getMessages(userLanguage);
         await this.telegramApiService.sendMessage(
           this.bot,
           callbackQuery.message.chat.id,
-          "❌ An error occurred. Please try again.",
+          messages.messages.errors.tryAgain,
         );
       }
     }
@@ -291,16 +316,26 @@ export class TelegramService implements OnModuleInit {
 
   private async handleGeneralMessage(msg: TelegramBot.Message): Promise<void> {
     // Skip if it's a command or button text (already handled by other handlers)
+    // Exception: /cancel should be handled by broadcast handler if there's an active session
     if (
-      msg.text?.startsWith("/") ||
-      msg.text === "👤 Profile" ||
-      msg.text === "📋 My Channels" ||
-      msg.text === "➕ Add Channel" ||
-      msg.text === "📢 Send Message" ||
-      msg.text === "📜 Message History" ||
+      (msg.text?.startsWith("/") && msg.text !== "/cancel") ||
       msg.text?.startsWith("@")
     ) {
       return;
+    }
+
+    // Check if message is a menu button text
+    if (msg.text) {
+      const englishMessages = this.i18nService.getMessages("ENGLISH" as any);
+      const russianMessages = this.i18nService.getMessages("RUSSIAN" as any);
+
+      const isMenuButton =
+        englishMessages.messages.menuButtons.english.includes(msg.text) ||
+        russianMessages.messages.menuButtons.russian.includes(msg.text);
+
+      if (isMenuButton) {
+        return;
+      }
     }
 
     // Check if user has an active broadcast session
@@ -316,9 +351,11 @@ export class TelegramService implements OnModuleInit {
   ): Promise<void> {
     try {
       // Get user language for proper translations
-      const userLanguage = await this.i18nService.getUserLanguage(chatId.toString());
+      const userLanguage = await this.i18nService.getUserLanguage(
+        chatId.toString(),
+      );
       const messages = this.i18nService.getMessages(userLanguage);
-      
+
       // Send success notification with translated content
       const successMessage = `${messages.messages.subscription.premiumActivatedTitle}
 

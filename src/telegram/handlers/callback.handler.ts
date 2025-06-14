@@ -799,7 +799,7 @@ ${messages.messages.subscription.freeMessages}`;
         reply_markup: this.telegramApiService.createInlineKeyboard(keyboard),
       });
     } catch (error) {
-      this.logger.error('Error cancelling subscription:', error);
+      this.logger.error("Error cancelling subscription:", error);
       const userLanguage = await this.i18nService.getUserLanguage(
         telegramUser.id.toString(),
       );
@@ -838,7 +838,8 @@ ${messages.messages.subscription.freeMessages}`;
         return;
       }
 
-      const subscription = await this.subscriptionService.getUserSubscriptionInfo(user.id);
+      const subscription =
+        await this.subscriptionService.getUserSubscriptionInfo(user.id);
 
       if (!subscription || subscription.subscriptionStatus !== "ACTIVE") {
         await this.telegramApiService.sendMessage(
@@ -884,7 +885,7 @@ ${messages.messages.subscription.remainsActive}`;
         reply_markup: this.telegramApiService.createInlineKeyboard(keyboard),
       });
     } catch (error) {
-      this.logger.error('Error showing cancel confirmation:', error);
+      this.logger.error("Error showing cancel confirmation:", error);
       const userLanguage = await this.i18nService.getUserLanguage(
         telegramUser.id.toString(),
       );

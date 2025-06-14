@@ -27,10 +27,11 @@ export class CommandHandler {
     const { chatId, telegramUser } = context;
 
     if (!telegramUser) {
+      const messages = this.i18nService.getMessages("ENGLISH" as any);
       await this.telegramApiService.sendMessage(
         bot,
         chatId,
-        "❌ Unable to get user information",
+        messages.messages.errors.unableToGetUserInfo,
       );
       return;
     }
@@ -74,10 +75,11 @@ ${messages.messages.welcome.features}`;
       await this.showMainMenu(bot, chatId, telegramUser.id.toString());
     } catch (error) {
       this.logger.error("Error creating user:", error);
+      const messages = this.i18nService.getMessages("ENGLISH" as any);
       await this.telegramApiService.sendMessage(
         bot,
         chatId,
-        "❌ Sorry, there was an error setting up your account. Please try again later.",
+        messages.messages.errors.accountSetupError,
       );
     }
   }
@@ -527,18 +529,19 @@ ${messages.messages.subscription.clickToUpgrade}`;
         return;
       }
 
-      const subscriptionInfo = await this.subscriptionService.getUserSubscriptionInfo(user.id);
-      
+      const subscriptionInfo =
+        await this.subscriptionService.getUserSubscriptionInfo(user.id);
+
       // Format start date
-      const startDate = user.subscriptionStartDate ? 
-        user.subscriptionStartDate.toDateString() : 
-        messages.messages.general.notSet;
+      const startDate = user.subscriptionStartDate
+        ? user.subscriptionStartDate.toDateString()
+        : messages.messages.general.notSet;
 
       let managementMessage = `${messages.messages.subscription.managementTitle}
 
 ${messages.messages.subscription.managementDescription}
 
-${messages.messages.subscription.currentPlan} ${subscriptionInfo.subscriptionPlan === 'PREMIUM' ? '💎 Premium' : '🆓 Free'}
+${messages.messages.subscription.currentPlan} ${subscriptionInfo.subscriptionPlan === "PREMIUM" ? messages.messages.display.premium : messages.messages.display.free}
 ${messages.messages.subscription.status} ${subscriptionInfo.subscriptionStatus}`;
 
       let keyboard;
@@ -551,14 +554,14 @@ ${messages.messages.subscription.monthlyPrice} $10/month
 ${messages.messages.subscription.yourStats}
 ${messages.messages.subscription.totalMessages(subscriptionInfo.totalMessages)}`;
 
-                  keyboard = {
-            inline_keyboard: [
-              [
-                {
-                  text: messages.messages.subscription.cancelSubscriptionButton,
-                  callback_data: "confirm_cancel_subscription_menu",
-                },
-              ],
+        keyboard = {
+          inline_keyboard: [
+            [
+              {
+                text: messages.messages.subscription.cancelSubscriptionButton,
+                callback_data: "confirm_cancel_subscription_menu",
+              },
+            ],
             [
               {
                 text: messages.buttons.back,
@@ -596,10 +599,14 @@ ${messages.messages.subscription.advancedScheduling}`;
         };
       }
 
-      await this.telegramApiService.sendMessage(bot, chatId, managementMessage, {
-        reply_markup: keyboard,
-      });
-
+      await this.telegramApiService.sendMessage(
+        bot,
+        chatId,
+        managementMessage,
+        {
+          reply_markup: keyboard,
+        },
+      );
     } catch (error) {
       this.logger.error("Error handling subscription management:", error);
       const userLanguage = await this.i18nService.getUserLanguage(
