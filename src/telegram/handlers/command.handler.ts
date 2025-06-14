@@ -467,10 +467,6 @@ ${messages.messages.subscription.remaining(subscriptionInfo.freeMessagesRemainin
 ${messages.messages.subscription.premiumPlan}
 ${messages.messages.subscription.unlimitedMessages}
 ${messages.messages.subscription.prioritySupport}
-${messages.messages.subscription.advancedScheduling}
-${messages.messages.subscription.analyticsDashboard}
-${messages.messages.subscription.customBranding}
-
 ${messages.messages.subscription.clickToUpgrade}`;
 
       const keyboard = {
@@ -581,9 +577,7 @@ ${messages.messages.subscription.remaining(subscriptionInfo.freeMessagesRemainin
 
 ${messages.messages.subscription.premiumPlan}
 ${messages.messages.subscription.unlimitedMessages}
-${messages.messages.subscription.prioritySupport}
-${messages.messages.subscription.advancedScheduling}`;
-
+${messages.messages.subscription.prioritySupport}`;
         keyboard = {
           inline_keyboard: [
             [
@@ -668,7 +662,6 @@ ${messages.messages.subscription.cancelConfirmation}
 ${messages.messages.subscription.willLose}
 ${messages.messages.subscription.unlimitedMessages}
 ${messages.messages.subscription.prioritySupport}
-${messages.messages.subscription.advancedScheduling}
 
 ${messages.messages.subscription.willKeep}
 ${messages.messages.subscription.freeMessages}

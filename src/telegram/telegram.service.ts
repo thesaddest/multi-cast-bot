@@ -370,9 +370,6 @@ ${messages.messages.subscription.premiumActivatedMessage}
 ${messages.messages.subscription.premiumActivatedAccess}
 ${messages.messages.subscription.premiumActivatedFeatures.unlimitedMessages}
 ${messages.messages.subscription.premiumActivatedFeatures.prioritySupport}
-${messages.messages.subscription.premiumActivatedFeatures.advancedScheduling}
-${messages.messages.subscription.premiumActivatedFeatures.analyticsDashboard}
-${messages.messages.subscription.premiumActivatedFeatures.customBranding}
 
 ${messages.messages.subscription.premiumActivatedThanks}`;
 

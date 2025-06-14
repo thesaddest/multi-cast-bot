@@ -202,9 +202,6 @@ export interface I18nMessages {
       premiumPlan: string;
       unlimitedMessages: string;
       prioritySupport: string;
-      advancedScheduling: string;
-      analyticsDashboard: string;
-      customBranding: string;
       clickToUpgrade: string;
       upgradeToPremium: string;
       cancelTitle: string;
@@ -221,7 +218,6 @@ export interface I18nMessages {
       whatYouGet: string;
       unlimitedMessagesAcross: string;
       priorityCustomerSupport: string;
-      advancedSchedulingFeatures: string;
       payWithStripe: string;
       subscriptionCancelled: string;
       cancelledMessage: string;
@@ -247,9 +243,6 @@ export interface I18nMessages {
       premiumActivatedFeatures: {
         unlimitedMessages: string;
         prioritySupport: string;
-        advancedScheduling: string;
-        analyticsDashboard: string;
-        customBranding: string;
       };
       premiumActivatedThanks: string;
       // Payment error messages
@@ -549,9 +542,6 @@ const ENGLISH_MESSAGES: I18nMessages = {
       premiumPlan: "💎 Premium Plan - $10/month:",
       unlimitedMessages: "• ✅ Unlimited messages",
       prioritySupport: "• ✅ Priority support",
-      advancedScheduling: "• ✅ Advanced scheduling",
-      analyticsDashboard: "• ✅ Analytics dashboard",
-      customBranding: "• ✅ Custom branding",
       clickToUpgrade: "Click the button below to upgrade:",
       upgradeToPremium: "💎 Upgrade to Premium",
       cancelTitle: "🚫 Cancel Premium Subscription",
@@ -570,7 +560,6 @@ const ENGLISH_MESSAGES: I18nMessages = {
       whatYouGet: "✅ What you'll get:",
       unlimitedMessagesAcross: "• Unlimited messages across all platforms",
       priorityCustomerSupport: "• Priority customer support",
-      advancedSchedulingFeatures: "• Advanced scheduling features",
       payWithStripe: "💎 Pay with Stripe",
       subscriptionCancelled: "✅ Subscription Cancelled",
       cancelledMessage: "Your premium subscription has been cancelled.",
@@ -599,9 +588,6 @@ const ENGLISH_MESSAGES: I18nMessages = {
       premiumActivatedFeatures: {
         unlimitedMessages: "• ✅ Unlimited messages",
         prioritySupport: "• ✅ Priority support",
-        advancedScheduling: "• ✅ Advanced scheduling",
-        analyticsDashboard: "• ✅ Analytics dashboard",
-        customBranding: "• ✅ Custom branding",
       },
       premiumActivatedThanks:
         "Thank you for upgrading! You can now enjoy all premium features.",
@@ -935,9 +921,6 @@ const RUSSIAN_MESSAGES: I18nMessages = {
       premiumPlan: "💎 Премиум план - $10/месяц:",
       unlimitedMessages: "• ✅ Безлимитные сообщения",
       prioritySupport: "• ✅ Приоритетная поддержка",
-      advancedScheduling: "• ✅ Расширенное планирование",
-      analyticsDashboard: "• ✅ Панель аналитики",
-      customBranding: "• ✅ Персональный брендинг",
       clickToUpgrade: "Нажмите кнопку ниже для обновления:",
       upgradeToPremium: "💎 Обновиться до Премиум",
       cancelTitle: "🚫 Отменить Премиум подписку",
@@ -955,7 +938,6 @@ const RUSSIAN_MESSAGES: I18nMessages = {
       whatYouGet: "✅ Что вы получите:",
       unlimitedMessagesAcross: "• Безлимитные сообщения на всех платформах",
       priorityCustomerSupport: "• Приоритетная поддержка клиентов",
-      advancedSchedulingFeatures: "• Расширенные функции планирования",
       payWithStripe: "💎 Оплатить через Stripe",
       subscriptionCancelled: "✅ Подписка отменена",
       cancelledMessage: "Ваша премиум подписка была отменена.",
@@ -984,9 +966,6 @@ const RUSSIAN_MESSAGES: I18nMessages = {
       premiumActivatedFeatures: {
         unlimitedMessages: "• ✅ Безлимитные сообщения",
         prioritySupport: "• ✅ Приоритетная поддержка",
-        advancedScheduling: "• ✅ Расширенное планирование",
-        analyticsDashboard: "• ✅ Панель аналитики",
-        customBranding: "• ✅ Персональный брендинг",
       },
       premiumActivatedThanks:
         "Спасибо за обновление! Теперь вы можете наслаждаться всеми премиум функциями.",
