@@ -364,7 +364,8 @@ const ENGLISH_MESSAGES: I18nMessages = {
       messagesSent: "📊 Messages sent:",
       scheduledMessages: "📤 Scheduled messages:",
       premiumActive: "💎 Premium Active",
-      freePlan: (remaining: number) => `🆓 Free Plan (${remaining} remaining messages)`,
+      freePlan: (remaining: number) =>
+        `🆓 Free Plan (${remaining} remaining messages)`,
     },
     language: {
       title: "🌐 Language Settings",
@@ -695,7 +696,8 @@ const ENGLISH_MESSAGES: I18nMessages = {
       contactInfo: "📞 Contact Information:",
       telegramProfile: "💬 Telegram: @thesaddestkid",
       responseTime: "⏱️ Response time: Usually within 24 hours",
-      helpfulTips: "💡 Helpful Tips:\n• Make sure the bot has admin permissions in your channels",
+      helpfulTips:
+        "💡 Helpful Tips:\n• Make sure the bot has admin permissions in your channels",
     },
   },
 };
@@ -1081,7 +1083,8 @@ const RUSSIAN_MESSAGES: I18nMessages = {
       contactInfo: "📞 Контактная информация:",
       telegramProfile: "💬 Telegram: @thesaddestkid",
       responseTime: "⏱️ Время ответа: Обычно в течение 24 часов",
-      helpfulTips: "💡 Полезные советы:\n• Убедитесь, что бот имеет права администратора в ваших каналах",
+      helpfulTips:
+        "💡 Полезные советы:\n• Убедитесь, что бот имеет права администратора в ваших каналах",
     },
   },
 };

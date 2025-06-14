@@ -2,7 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { DbService } from "../db/db.service";
 import { StripeService } from "./stripe.service";
 import { ConfigService } from "../config/config.service";
-import { SubscriptionStatus, SubscriptionPlan } from "@prisma/client";
+import { SubscriptionStatus, SubscriptionPlan, UserRole } from "@prisma/client";
 import { getMessages } from "../telegram/constants/messages";
 
 @Injectable()
@@ -32,6 +32,10 @@ export class SubscriptionService {
         allowed: false,
         reason: getMessages("ENGLISH" as any).messages.errors.userNotFound,
       };
+    }
+
+    if (user.role === UserRole.ADMIN) {
+      return { allowed: true };
     }
 
     // Check if user has active premium subscription

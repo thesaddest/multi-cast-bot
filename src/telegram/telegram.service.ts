@@ -108,10 +108,7 @@ export class TelegramService implements OnModuleInit {
       this.handleCommand.bind(this, "subscription_management"),
     );
     this.bot.onText(/^🌐 Язык$/, this.handleCommand.bind(this, "language"));
-    this.bot.onText(
-      /^🆘 Поддержка$/,
-      this.handleCommand.bind(this, "support"),
-    );
+    this.bot.onText(/^🆘 Поддержка$/, this.handleCommand.bind(this, "support"));
 
     // Channel username input handler
     this.bot.onText(
